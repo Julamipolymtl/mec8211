@@ -3,7 +3,7 @@
 import numpy as np
 
 
-def solve_diffusion(N, scheme="forward", S=1., D_eff=1., R=1., Ce=1.):
+def solve_diffusion(N, scheme="forward", S=2e-8, D_eff=1e-10, R=0.5, Ce=20.0):
     """Solve the steady-state radial diffusion equation using finite differences.
 
     D_eff * (d2C/dr2 + (1/r)*dC/dr) = S
