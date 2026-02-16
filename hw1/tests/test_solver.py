@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from analytical import analytical_solution
+from solver import solve_diffusion
 
 S = 2e-8
 D_EFF = 1e-10
@@ -31,3 +32,26 @@ class TestAnalytical:
         C = analytical_solution(np.array([0.0, dr]), S=S, D_eff=D_EFF, R=R, Ce=CE)
         dCdr = (C[1] - C[0]) / dr
         assert dCdr == pytest.approx(0.0, abs=1e-3)
+
+
+# --- Solver tests ---
+
+class TestSolverBoundaryConditions:
+    @pytest.mark.parametrize("scheme", ["forward", "central"])
+    def test_dirichlet_bc(self, scheme):
+        """C(R) must equal Ce for both schemes."""
+        r, C = solve_diffusion(20, scheme=scheme)
+        assert C[-1] == pytest.approx(CE)
+
+    def test_neumann_bc_forward(self):
+        """dC/dr ~ 0 at r = 0 using 1st-order forward difference."""
+        r, C = solve_diffusion(50, scheme="forward")
+        dCdr = (C[1] - C[0]) / (r[1] - r[0])
+        assert dCdr == pytest.approx(0.0, abs=1e-2)
+
+    def test_neumann_bc_central(self):
+        """dC/dr ~ 0 at r = 0 using 2nd-order forward difference."""
+        r, C = solve_diffusion(50, scheme="central")
+        dr = r[1] - r[0]
+        dCdr = (-3 * C[0] + 4 * C[1] - C[2]) / (2 * dr)
+        assert dCdr == pytest.approx(0.0, abs=1e-2)
