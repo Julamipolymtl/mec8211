@@ -49,7 +49,7 @@ class TestSolverBoundaryConditions:
         r, C = solve_diffusion(50, scheme=scheme)
         dr = r[1] - r[0]
         dCdr = (-3 * C[0] + 4 * C[1] - C[2]) / (2 * dr)
-        assert dCdr == pytest.approx(0.0, abs=1e-9)
+        assert dCdr == pytest.approx(0.0, abs=1e-12)
 
 
 class TestZeroSource:
@@ -88,4 +88,4 @@ class TestConservation:
         # Use 2nd order backward difference for dC/dr at r=R:
         dCdr_R = (3 * C[-1] - 4 * C[-2] + C[-3]) / (2 * dr)
         flux_in = D_EFF * dCdr_R * 2 * np.pi * R
-        assert flux_in == pytest.approx(total_source, rel=2e-3)
+        assert flux_in == pytest.approx(total_source, rel=1e-3)
