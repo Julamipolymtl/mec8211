@@ -31,7 +31,7 @@ class TestAnalytical:
         dr = 1e-8
         C = analytical_solution(np.array([0.0, dr]), S=S, D_eff=D_EFF, R=R, Ce=CE)
         dCdr = (C[1] - C[0]) / dr
-        assert dCdr == pytest.approx(0.0, abs=1e-3)
+        assert dCdr == pytest.approx(0.0, abs=1e-6)
 
 
 # --- Solver tests ---
@@ -47,14 +47,14 @@ class TestSolverBoundaryConditions:
         """dC/dr ~ 0 at r = 0 using 1st-order forward difference."""
         r, C = solve_diffusion(50, scheme="forward")
         dCdr = (C[1] - C[0]) / (r[1] - r[0])
-        assert dCdr == pytest.approx(0.0, abs=1e-2)
+        assert dCdr == pytest.approx(0.0, abs=1e-9)
 
     def test_neumann_bc_central(self):
         """dC/dr ~ 0 at r = 0 using 2nd-order forward difference."""
         r, C = solve_diffusion(50, scheme="central")
         dr = r[1] - r[0]
         dCdr = (-3 * C[0] + 4 * C[1] - C[2]) / (2 * dr)
-        assert dCdr == pytest.approx(0.0, abs=1e-2)
+        assert dCdr == pytest.approx(0.0, abs=1e-9)
 
 
 class TestSolverMonotonicity:
