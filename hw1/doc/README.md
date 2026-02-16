@@ -13,7 +13,12 @@ src/
   convergence.py  # Grid convergence study & error norms
   plots.py        # All plotting routines
   main.py         # Entry point — generates all figures
+tests/
+  conftest.py     # Test import configuration
+  test_solver.py  # Unit tests for analytical solution & solver
 results/          # Output plots (generated)
+data/             # Input data (unused for this homework)
+doc/              # Documentation
 ```
 
 ## Usage
@@ -25,3 +30,11 @@ python main.py
 ```
 
 This produces all concentration profile and convergence plots in `results/`.
+
+## Tests
+
+From the project root (`hw1/`):
+
+```bash
+python -m pytest tests/ -v
+```
