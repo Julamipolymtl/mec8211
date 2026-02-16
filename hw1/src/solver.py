@@ -45,7 +45,6 @@ def solve_diffusion(N, scheme="forward", S=2e-8, D_eff=1e-10, R=0.5, Ce=20.0):
 
     # --- Interior domain ---
     _dr2 = 1 / dr**2
-    _rdr = r * dr
     for i in range(1, N - 1):
         r_i = r[i]
 
@@ -57,12 +56,12 @@ def solve_diffusion(N, scheme="forward", S=2e-8, D_eff=1e-10, R=0.5, Ce=20.0):
         match scheme:
             case "forward":
                 # dC/dr ≈ (C_{i+1} - C_i) / dr
-                coeff_i += - D_eff * _rdr[i]
-                coeff_ip1 += D_eff * _rdr[i]
+                coeff_i -= D_eff / (r_i * dr)
+                coeff_ip1 += D_eff / (r_i * dr)
             case "central":
                 # dC/dr ≈ (C_{i+1} - C_{i-1}) / (2*dr)
-                coeff_im1 += D_eff / (r_i * 2.0 * dr) * (-1.0)
-                coeff_ip1 += D_eff / (r_i * 2.0 * dr) * 1.0
+                coeff_im1 -= D_eff / (r_i * 2.0 * dr)
+                coeff_ip1 += D_eff / (r_i * 2.0 * dr)
 
         A[i, i - 1] = coeff_im1
         A[i, i] = coeff_i
