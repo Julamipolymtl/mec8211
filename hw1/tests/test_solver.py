@@ -57,6 +57,16 @@ class TestSolverBoundaryConditions:
         assert dCdr == pytest.approx(0.0, abs=1e-9)
 
 
+class TestZeroSource:
+    """With S=0 the exact solution is C(r) = Ce everywhere."""
+
+    @pytest.mark.parametrize("scheme", ["forward", "central"])
+    def test_uniform_solution(self, scheme):
+        """Solver must return C = Ce at every node when there is no source."""
+        _, C = solve_diffusion(50, scheme=scheme, S=0.0)
+        np.testing.assert_allclose(C, CE, atol=1e-12)
+
+
 class TestSolverMonotonicity:
     @pytest.mark.parametrize("scheme", ["forward", "central"])
     def test_monotonically_increasing(self, scheme):
@@ -84,13 +94,3 @@ class TestConservation:
         flux_in = D_EFF * dCdr_R * 2 * np.pi * R
 
         assert flux_in == pytest.approx(total_source, rel=1e-2)
-
-
-class TestZeroSource:
-    """With S=0 the exact solution is C(r) = Ce everywhere."""
-
-    @pytest.mark.parametrize("scheme", ["forward", "central"])
-    def test_uniform_solution(self, scheme):
-        """Solver must return C = Ce at every node when there is no source."""
-        _, C = solve_diffusion(50, scheme=scheme, S=0.0)
-        np.testing.assert_allclose(C, CE, atol=1e-12)
