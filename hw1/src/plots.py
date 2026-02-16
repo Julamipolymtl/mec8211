@@ -77,7 +77,6 @@ def plot_convergence(scheme="forward", filename="convergence_plot.png"):
     ax.legend()
     ax.grid()
     
-    filename = filename.replace(".png", f"_{scheme}.png")
     filepath = os.path.join(RESULTS_DIR, filename)
     fig.savefig(filepath, dpi=300)
     
