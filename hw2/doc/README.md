@@ -1,0 +1,42 @@
+# HW1 — Radial Diffusion Solver
+
+Finite difference solver for steady-state salt diffusion in a cylindrical concrete pillar. Two schemes are implemented: forward difference (1st order) and central difference (2nd order) for the dC/dr term.
+
+See docstrings in `src/` for detailed documentation.
+
+## Project Structure
+
+```
+src/
+  analytical.py   # Analytical solution
+  solver.py       # Finite difference solver
+  convergence.py  # Grid convergence study & error norms
+  plots.py        # All plotting routines
+  main.py         # Entry point — generates all figures
+tests/
+  conftest.py     # Test import configuration
+  test_solver.py  # Unit tests for analytical solution & solver
+results/          # Output plots (generated)
+data/             # Input data (unused for this homework)
+doc/              # Documentation
+```
+
+## Usage
+
+From the `src/` directory:
+
+```bash
+python main.py
+```
+
+This produces all concentration profile and convergence plots in `results/`.
+
+Because the problem being tackled is very light and for ease of use, we do not store data in the `data/` folder and choose to run the postprocessing scripts and solver execution in the same script.
+
+## Tests
+
+From the project root (`hw1/`):
+
+```bash
+python -m pytest tests/ -v
+```
