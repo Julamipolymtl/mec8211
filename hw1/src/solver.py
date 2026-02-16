@@ -1,7 +1,8 @@
-"""Finite difference solver for steady-state radial diffusion (1D) in a cylinder."""
+"""
+Finite difference solver for steady-state radial diffusion (1D) in a cylinder.
+"""
 
 import numpy as np
-
 
 def solve_diffusion(N, scheme="forward", S=2e-8, D_eff=1e-10, R=0.5, Ce=20.0):
     """Solve the steady-state radial diffusion equation using finite differences.
@@ -18,15 +19,15 @@ def solve_diffusion(N, scheme="forward", S=2e-8, D_eff=1e-10, R=0.5, Ce=20.0):
         Number of grid points (including boundaries).
     scheme : str
         "forward" for O(Δr) forward difference on dC/dr (Scheme 1),
-        "central" for O(Δr²) central difference on dC/dr (Scheme 2).
+        "central" for O(Δr2) central difference on dC/dr (Scheme 2).
     S : float
-        Source term [mol/m³/s].
+        Source term [mol/m3/s].
     D_eff : float
-        Effective diffusion coefficient [m²/s].
+        Effective diffusion coefficient [m2/s].
     R : float
         Pillar radius [m].
     Ce : float
-        External concentration [mol/m³].
+        External concentration [mol/m3].
 
     Returns
     -------
