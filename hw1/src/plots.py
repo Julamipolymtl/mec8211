@@ -45,18 +45,22 @@ def plot_concentration_profiles(N=5, scheme="forward", filename="concentration_p
     filepath = os.path.join(RESULTS_DIR, filename)
     fig.savefig(filepath, dpi=300)
     
-def plot_convergence(scheme="forward", filename="convergence_plot.png"):
+def plot_convergence(N=5, num_refinements=8, scheme="forward", filename="convergence_plot.png"):
     """
     Plot log-log convergence of error norms for a given finite difference scheme.
     
     Parameters
     ----------
+    N : int
+        Initial number of grid points (including boundaries).
+    num_refinements : int
+        Number of grid refinements to perform.
     scheme : str
         Finite difference scheme to use ("forward" or "central").
     filename : str
         Name of the output PNG file to save the plot.
     """
-    results = convergence_study(scheme=scheme)
+    results = convergence_study(scheme=scheme, initial_grid_size=N, num_refinements=num_refinements)
     
     dr = results["dr"]
     fig, ax = plt.subplots(figsize=(8, 5))
