@@ -81,7 +81,7 @@ class TestConservation:
     @pytest.mark.parametrize("scheme", ["forward", "central"])
     def test_flux_balance(self, scheme):
         """∫₀ᴿ S·2πr·dr = S·π·R² must equal -D_eff·(dC/dr)|_{r=R}·2πR."""
-        N = 200
+        N = 1000
         r, C = solve_diffusion(N, scheme=scheme, S=S, D_eff=D_EFF, R=R, Ce=CE)
         dr = r[1] - r[0]
 
@@ -92,5 +92,4 @@ class TestConservation:
         # Balance: D_eff * (dC/dr)|_{r=R} * 2πR = S * πR²
         dCdr_R = (C[-1] - C[-2]) / dr
         flux_in = D_EFF * dCdr_R * 2 * np.pi * R
-
-        assert flux_in == pytest.approx(total_source, rel=1e-2)
+        assert flux_in == pytest.approx(total_source, rel=2e-3)
