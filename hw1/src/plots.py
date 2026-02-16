@@ -15,7 +15,7 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 
 def plot_concentration_profiles(N=5, scheme="forward", filename="concentration_profile.png"):
     """
-    Docstring for plot_concentration_profiles
+    Plot numerical vs analytical concentration profiles for a given grid size and scheme.
     
     Parameters
     ----------
