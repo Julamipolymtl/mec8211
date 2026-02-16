@@ -31,6 +31,8 @@ python main.py
 
 This produces all concentration profile and convergence plots in `results/`.
 
+Because the problem being tackled is very light and for ease of use, we do not store data in the `data/` folder and choose to run the postprocessing scripts and solver execution in the same script.
+
 ## Tests
 
 From the project root (`hw1/`):
