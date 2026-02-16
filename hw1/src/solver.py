@@ -35,6 +35,7 @@ def solve_diffusion(N, scheme="forward", S=1., D_eff=1., R=1., Ce=1.):
     C : ndarray
         Numerical concentration solution, shape (N,).
     """
+    
     dr = R / (N - 1)
     r = np.linspace(0., R, N)
 
