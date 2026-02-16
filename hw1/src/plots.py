@@ -80,3 +80,32 @@ def plot_convergence(scheme="forward", filename="convergence_plot.png"):
     filename = filename.replace(".png", f"_{scheme}.png")
     filepath = os.path.join(RESULTS_DIR, filename)
     fig.savefig(filepath, dpi=300)
+    
+def plot_comparison(N=5, filename="concentration_profile_scheme_comparison.png"):
+    """Plot concentration profiles for both forward and central schemes.
+
+    Parameters
+    ----------
+    N : int
+        Number of grid points (including boundaries) for the numerical solutions.
+    filename : str
+        Name of the output PNG file to save the plot.
+    """
+    r_fwd, C_fwd = solve_diffusion(N, scheme="forward")
+    r_ctr, C_ctr = solve_diffusion(N, scheme="central")
+    r_analytical = np.linspace(0.0, 0.5, 500)
+    C_ana = analytical_solution(r_analytical)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(r_analytical, C_ana, color="black", linewidth=2, label="Analytical")
+    ax.plot(r_fwd, C_fwd, color="red", ls="--", marker="o", markersize=5, label=f"Forward ({N} pts)")
+    ax.plot(r_ctr, C_ctr, color="blue", ls="--", marker="s", markersize=5, label=f"Central ({N} pts)")
+    ax.set_xlabel("r [m]")
+    ax.set_ylabel("C $[mol/m^3]$")
+    ax.set_title("Concentration Profiles: Forward vs Central Schemes")
+    ax.legend()
+    ax.grid()
+    fig.tight_layout()
+    
+    filepath = os.path.join(RESULTS_DIR, filename)
+    fig.savefig(filepath, dpi=300)
