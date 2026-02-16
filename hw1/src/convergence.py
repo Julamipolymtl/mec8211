@@ -1,4 +1,6 @@
-"""Convergence analysis: error norms and observed convergence orders."""
+"""
+Convergence analysis: error norms and observed convergence orders.
+"""
 
 import numpy as np
 
