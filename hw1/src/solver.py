@@ -69,18 +69,11 @@ def solve_diffusion(N, scheme="forward", S=2e-8, D_eff=1e-10, R=0.5, Ce=20.0):
         b[i] = S
         
     # --- Homogenous Neumann BC @ R = 0: dC/dr = 0 ---
-    match scheme:
-        case "forward":
-            # 1st order forward difference
-            A[0, 0] = -1.0
-            A[0, 1] = 1.0
-            b[0] = 0.0
-        case "central":
-            # 2nd-order foward difference
-            A[0, 0] = -3.0
-            A[0, 1] = 4.0
-            A[0, 2] = -1.0
-            b[0] = 0.0
+    # 2nd-order foward difference to maintain O(Δr2) accuracy at the boundary for both schemes:
+    A[0, 0] = -3.0
+    A[0, 1] = 4.0
+    A[0, 2] = -1.0
+    b[0] = 0.0
 
     # --- Dirichlet BC @ r = R: C = Ce ---
     A[-1, -1] = 1.0

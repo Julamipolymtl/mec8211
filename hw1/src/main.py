@@ -8,6 +8,7 @@ print("Running main.py to generate all figures and convergence tables...")
 
 print("\n>>> Scheme 1: Forward difference for dC/dr")
 plot_concentration_profiles(N=5, scheme="forward", filename="concentration_forward.png")
+plot_concentration_profiles(N=33, scheme="forward", filename="concentration_forward_N33.png")
 plot_convergence(scheme="forward", filename="convergence_forward.png")
 
 print("\n>>> Scheme 2: Central difference for dC/dr")

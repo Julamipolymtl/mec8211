@@ -43,15 +43,10 @@ class TestSolverBoundaryConditions:
         r, C = solve_diffusion(20, scheme=scheme)
         assert C[-1] == pytest.approx(CE)
 
-    def test_neumann_bc_forward(self):
-        """dC/dr ~ 0 at r = 0 using 1st-order forward difference."""
-        r, C = solve_diffusion(50, scheme="forward")
-        dCdr = (C[1] - C[0]) / (r[1] - r[0])
-        assert dCdr == pytest.approx(0.0, abs=1e-9)
-
-    def test_neumann_bc_central(self):
+    @pytest.mark.parametrize("scheme", ["forward", "central"])
+    def test_neumann_bc(self, scheme):
         """dC/dr ~ 0 at r = 0 using 2nd-order forward difference."""
-        r, C = solve_diffusion(50, scheme="central")
+        r, C = solve_diffusion(50, scheme=scheme)
         dr = r[1] - r[0]
         dCdr = (-3 * C[0] + 4 * C[1] - C[2]) / (2 * dr)
         assert dCdr == pytest.approx(0.0, abs=1e-9)
@@ -90,6 +85,7 @@ class TestConservation:
 
         # Diffusive flux into the domain at r=R (S is a sink, so flux is inward)
         # Balance: D_eff * (dC/dr)|_{r=R} * 2πR = S * πR²
-        dCdr_R = (C[-1] - C[-2]) / dr
+        # Use 2nd order backward difference for dC/dr at r=R:
+        dCdr_R = (3 * C[-1] - 4 * C[-2] + C[-3]) / (2 * dr)
         flux_in = D_EFF * dCdr_R * 2 * np.pi * R
         assert flux_in == pytest.approx(total_source, rel=2e-3)
