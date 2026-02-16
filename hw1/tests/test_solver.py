@@ -55,3 +55,11 @@ class TestSolverBoundaryConditions:
         dr = r[1] - r[0]
         dCdr = (-3 * C[0] + 4 * C[1] - C[2]) / (2 * dr)
         assert dCdr == pytest.approx(0.0, abs=1e-2)
+
+
+class TestSolverMonotonicity:
+    @pytest.mark.parametrize("scheme", ["forward", "central"])
+    def test_monotonically_increasing(self, scheme):
+        """With a positive source term, concentration should increase from center to edge."""
+        _, C = solve_diffusion(50, scheme=scheme)
+        assert np.all(np.diff(C) >= 0)
