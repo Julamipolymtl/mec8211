@@ -40,3 +40,7 @@ From the project root (`hw1/`):
 ```bash
 python -m pytest tests/ -v
 ```
+
+## Notice on AI use
+
+AI (Copilot and other LLMs) was used in the making of this project. Its inputs were mainly used in of the code architecture planning and writing the documentation. 
