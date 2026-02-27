@@ -1,4 +1,4 @@
-# HW1 — Radial Diffusion Solver
+# HW2 — Transient Radial Diffusion Solver
 
 Finite difference solver for steady-state salt diffusion in a cylindrical concrete pillar. Two schemes are implemented: forward difference (1st order) and central difference (2nd order) for the dC/dr term.
 
@@ -40,3 +40,7 @@ From the project root (`hw1/`):
 ```bash
 python -m pytest tests/ -v
 ```
+
+## Notice on AI use
+
+AI (Copilot and other LLMs) was used in the making of this project. Its inputs were mainly used in the code architecture planning and writing the documentation. 
