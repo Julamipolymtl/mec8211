@@ -7,14 +7,14 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-from analytical import analytical_solution
+from analytical import manufactured_solution
 from solver import solve_diffusion
 from convergence import *
 
 # Save plots in ../results/ relative to this script (in src/)
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 
-def plot_concentration_profiles(N=5, scheme="forward", filename="concentration_profile.png"):
+def plot_concentration_profiles(N=5, filename="concentration_profile.png"):
     """
     Plot numerical vs analytical concentration profiles for a given grid size and scheme.
     
@@ -28,13 +28,13 @@ def plot_concentration_profiles(N=5, scheme="forward", filename="concentration_p
         Name of the output PNG file to save the plot.
     """
 
-    r_num, C_num = solve_diffusion(N, scheme=scheme)
-    r_analytical = np.linspace(0.0, 0.5, 500)
-    C_ana = analytical_solution(r_analytical)
+    r_num, C_num = solve_diffusion(N)
+    r_mms = np.linspace(0.0, 0.5, 500)
+    C_ana = manufactured_solution(r_mms)
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(r_analytical, C_ana, color="black", linewidth=2, label="Analytical")
-    ax.plot(r_num, C_num, color="red", ls="--", marker="o", markersize=5, label=f"Numerical ({scheme}, N={N})")
+    ax.plot(r_mms, C_ana, color="black", linewidth=2, label="MMS")
+    ax.plot(r_num, C_num, color="red", ls="--", marker="o", markersize=5, label=f"Numerical (N={N})")
     ax.set_xlabel("r [m]")
     ax.set_ylabel("C $[mol/m^3]$")
     ax.set_title("Salt Concentration Profile in Concrete Pillar")
@@ -45,7 +45,7 @@ def plot_concentration_profiles(N=5, scheme="forward", filename="concentration_p
     filepath = os.path.join(RESULTS_DIR, filename)
     fig.savefig(filepath, dpi=300)
     
-def plot_convergence(scheme="forward", filename="convergence_plot.png"):
+def plot_convergence(filename="convergence_plot.png"):
     """
     Plot log-log convergence of error norms for a given finite difference scheme.
     
@@ -56,7 +56,7 @@ def plot_convergence(scheme="forward", filename="convergence_plot.png"):
     filename : str
         Name of the output PNG file to save the plot.
     """
-    results = convergence_study(scheme=scheme)
+    results = convergence_study()
     
     dr = results["dr"]
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -73,7 +73,7 @@ def plot_convergence(scheme="forward", filename="convergence_plot.png"):
 
     ax.set_xlabel(r"$\Delta r$ [m]")
     ax.set_ylabel("Error norm")
-    ax.set_title(f"Convergence Analysis — {scheme} Scheme")
+    ax.set_title(f"Convergence Analysis")
     ax.legend()
     ax.grid()
     
@@ -90,10 +90,10 @@ def plot_comparison(N=5, filename="concentration_profile_scheme_comparison.png")
     filename : str
         Name of the output PNG file to save the plot.
     """
-    r_fwd, C_fwd = solve_diffusion(N, scheme="forward")
-    r_ctr, C_ctr = solve_diffusion(N, scheme="central")
+    r_fwd, C_fwd = solve_diffusion(N)
+    r_ctr, C_ctr = solve_diffusion(N)
     r_analytical = np.linspace(0.0, 0.5, 500)
-    C_ana = analytical_solution(r_analytical)
+    C_ana = manufactured_solution(r_analytical)
 
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(r_analytical, C_ana, color="black", linewidth=2, label="Analytical")

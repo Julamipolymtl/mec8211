@@ -4,7 +4,7 @@ Convergence analysis: error norms and observed convergence orders.
 
 import numpy as np
 
-from analytical import analytical_solution
+from analytical import manufactured_solution
 from solver import solve_diffusion
 
 def compute_error_norms(C_numerical, C_analytical):
@@ -29,7 +29,7 @@ def compute_error_norms(C_numerical, C_analytical):
     Linf = np.max(error)
     return L1, L2, Linf
 
-def convergence_study(scheme="forward", initial_grid_size=5, num_refinements=8):
+def convergence_study(initial_grid_size=5, num_refinements=8):
     """Run a grid convergence study for the given finite difference scheme.
 
     Parameters
@@ -56,8 +56,8 @@ def convergence_study(scheme="forward", initial_grid_size=5, num_refinements=8):
     grid_sizes = [(initial_grid_size-1) * (2**i) + 1 for i in range(num_refinements)]
     
     for i, N in enumerate(grid_sizes):
-        r, C_num = solve_diffusion(N, scheme=scheme)
-        C_ana = analytical_solution(r)
+        r, C_num = solve_diffusion(N)
+        C_ana = manufactured_solution(r)
         L1, L2, Linf = compute_error_norms(C_num, C_ana)
 
         drs[i] = r[1] - r[0]
