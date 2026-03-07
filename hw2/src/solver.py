@@ -4,7 +4,12 @@ Finite difference solver for steady-state radial diffusion (1D) in a cylinder.
 
 import numpy as np
 
-def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.0):
+def S_MMS(r, t, R=0.5, D_eff=1e-10, k=4e-9):
+     S = np.exp(-t) * ((1 - ((r / R)**2)) * (k - 1) 
+                       + (4 * D_eff) / (R**2))
+     return S
+
+def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.0, k=4e-9):
     """Solve the steady-state radial diffusion equation using finite differences.
 
     D_eff * (d2C/dr2 + (1/r)*dC/dr) = S
@@ -46,8 +51,6 @@ def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.
     A = np.zeros((N, N))
     b = np.zeros(N)
 
-    k = 4 * 10**-9
-
     # --- Interior domain ---
     _dr2 = 1 / dr**2
     for i in range(1, N - 1):
@@ -77,10 +80,6 @@ def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.
     A[-1, -1] = 1.0
     b[-1] = Ce
 
-    def S_MMS(r, t):
-     S = np.exp(-t) * ((1 - ((r / R)**2)) * (k - 1) 
-                       + (4 * D_eff) / (R**2))
-     return S
     
     for n in range(t_steps):
         t = n * dt

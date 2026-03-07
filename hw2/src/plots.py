@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from analytical import manufactured_solution
-from solver import solve_diffusion
+from solver import solve_diffusion, S_MMS
 from convergence import *
 
 # Save plots in ../results/ relative to this script (in src/)
@@ -108,3 +108,53 @@ def plot_comparison(N=5, filename="concentration_profile_scheme_comparison.png")
     
     filepath = os.path.join(RESULTS_DIR, filename)
     fig.savefig(filepath, dpi=300)
+
+def plot_mms(filename="mms_heatmap.png"):
+    R = 0.5
+    T_max = 3.0
+
+    r = np.linspace(0, R, 200)
+    t = np.linspace(0, T_max, 200)
+    
+    R_grid, T_grid = np.meshgrid(r, t)
+
+    C_grid = manufactured_solution(R_grid, T_grid)
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    im = ax.pcolormesh(r, t, C_grid, shading="auto", cmap="viridis")
+    cbar = fig.colorbar(im)
+    cbar.set_label("C $[mol/m^3]$")
+
+    ax.set_xlabel("r [m]")
+    ax.set_ylabel("t [s]")
+    ax.set_title("MMS Solution")
+
+    fig.tight_layout()
+    
+    filepath = os.path.join(RESULTS_DIR, filename)
+    fig.savefig(filepath, dpi=300)  
+
+def plot_sourceterm(filename="mms_source.png"):
+    R = 0.5
+    T_max = 3.0
+
+    r = np.linspace(0, R, 200)
+    t = np.linspace(0, T_max, 200)
+    
+    R_grid, T_grid = np.meshgrid(r, t)
+
+    C_grid = S_MMS(R_grid, T_grid)
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    im = ax.pcolormesh(r, t, C_grid, shading="auto", cmap="viridis")
+    cbar = fig.colorbar(im)
+    cbar.set_label("S $[mol/m^3]$")
+
+    ax.set_xlabel("r [m]")
+    ax.set_ylabel("t [s]")
+    ax.set_title("Terme Source")
+
+    fig.tight_layout()
+    
+    filepath = os.path.join(RESULTS_DIR, filename)
+    fig.savefig(filepath, dpi=300)  
