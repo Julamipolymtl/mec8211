@@ -45,7 +45,7 @@ def plot_concentration_profiles(N=5, filename="concentration_profile.png"):
     filepath = os.path.join(RESULTS_DIR, filename)
     fig.savefig(filepath, dpi=300)
     
-def plot_convergence(filename="convergence_plot.png"):
+def plot_convergence(results, filename="convergence_plot.png"):
     """
     Plot log-log convergence of error norms for a given finite difference scheme.
     
@@ -56,7 +56,6 @@ def plot_convergence(filename="convergence_plot.png"):
     filename : str
         Name of the output PNG file to save the plot.
     """
-    results = convergence_study()
     
     dr = results["dr"]
     fig, ax = plt.subplots(figsize=(8, 5))
