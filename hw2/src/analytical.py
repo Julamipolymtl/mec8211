@@ -5,7 +5,7 @@ Analytical solution for salt diffusion in a cylindrical concrete pillar with uni
 import numpy as np
 
 
-def analytical_solution(r, S=2e-8, D_eff=1e-10, R=0.5, Ce=20.0):
+def manufactured_solution(r, t=1.0, R=0.5):
     """Compute the analytical solution for the steady-state radial diffusion problem.
 
     C(r) = (1/4)*(S/D_eff)*R2*(r²/R2 - 1) + Ce
@@ -28,4 +28,7 @@ def analytical_solution(r, S=2e-8, D_eff=1e-10, R=0.5, Ce=20.0):
     C : ndarray
         Concentration at each radial position [mol/m3].
     """
-    return 0.25 * (S / D_eff) * (r * r - R * R) + Ce
+    r = r[np.newaxis, :]   # (1, Nr)
+    t = t[:, np.newaxis]   # (Nt, 1)
+
+    return np.exp(-t)*(1 - ((r/R)**2))
