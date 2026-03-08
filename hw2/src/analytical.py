@@ -28,4 +28,7 @@ def manufactured_solution(r, t=1.0, R=0.5):
     C : ndarray
         Concentration at each radial position [mol/m3].
     """
+    r = r[np.newaxis, :]   # (1, Nr)
+    t = t[:, np.newaxis]   # (Nt, 1)
+
     return np.exp(-t)*(1 - ((r/R)**2))

@@ -64,11 +64,11 @@ def plot_convergence(results, filename="convergence_plot.png"):
         ax.loglog(dr, results[norm_name], f"-{marker}", label=norm_name)
 
     # Reference slopes for O(r) and O(r2)   
-    dr_ref = np.array([dr.min(), dr.max()])
-    scale1 = results["L2"][0] / dr[0]
-    scale2 = results["L2"][0] / dr[0]**2
-    ax.loglog(dr_ref, scale1 * dr_ref, "k--", label=r"$O(\Delta r)$")
-    ax.loglog(dr_ref, scale2 * dr_ref**2, "k:", label=r"$O(\Delta r^2)$")
+    #dr_ref = np.array([dr.min(), dr.max()])
+    #scale1 = results["L2"][0] / dr[0]
+    #scale2 = results["L2"][0] / dr[0]**2
+    #ax.loglog(dr_ref, scale1 * dr_ref, "k--", label=r"$O(\Delta r)$")
+    #ax.loglog(dr_ref, scale2 * dr_ref**2, "k:", label=r"$O(\Delta r^2)$")
 
     ax.set_xlabel(r"$\Delta r$ [m]")
     ax.set_ylabel("Error norm")
@@ -115,9 +115,9 @@ def plot_mms(filename="mms_heatmap.png"):
     r = np.linspace(0, R, 200)
     t = np.linspace(0, T_max, 200)
     
-    R_grid, T_grid = np.meshgrid(r, t)
+    #R_grid, T_grid = np.meshgrid(r, t)
 
-    C_grid = manufactured_solution(R_grid, T_grid)
+    C_grid = manufactured_solution(r, t)
     fig, ax = plt.subplots(figsize=(8, 5))
 
     im = ax.pcolormesh(r, t, C_grid, shading="auto", cmap="viridis")

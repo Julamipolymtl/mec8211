@@ -6,7 +6,7 @@ import numpy as np
 
 def S_MMS(r, t, R=0.5, D_eff=1e-10, k=4e-9):
      S = np.exp(-t) * ((1 - ((r / R)**2)) * (k - 1) 
-                       + (4 * D_eff) / (R**2))
+                       + (4 * D_eff) / (R**2)) 
      return S
 
 def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.0, k=4e-9):
@@ -44,12 +44,15 @@ def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.
     
     dr = R / (N - 1)
     r = np.linspace(0., R, N)
+    time = np.linspace(0, T_max, t_steps)
 
     dt = T_max / t_steps
     C = np.zeros(N)
+    C_all = np.zeros((t_steps, N))
 
     A = np.zeros((N, N))
     b = np.zeros(N)
+
 
     # --- Interior domain ---
     _dr2 = 1 / dr**2
@@ -86,4 +89,5 @@ def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.
         S = S_MMS(r,t)
         b[1:-1] = C[1:-1] + dt * S[1:-1]
         C = np.linalg.solve(A, b)
-    return r, C
+        C_all[n, :] = C
+    return r, time, C_all
