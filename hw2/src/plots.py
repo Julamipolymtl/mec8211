@@ -31,13 +31,14 @@ def plot_concentration_profiles(params, filename="concentration_profile.png"):
     from dataclasses import replace
     params = replace(params, mms=False)
     r_num, t_num, C_num = solve_diffusion(params)
+    t_final = t_num[-1]
 
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(r_num, C_num[-1, :], color="red", ls="--", marker="o",
             markersize=5, label=f"Numerical (N={params.N_r})")
     ax.set_xlabel("r [m]")
     ax.set_ylabel("C $[mol/m^3]$")
-    ax.set_title("Salt Concentration Profile in Concrete Pillar")
+    ax.set_title(f"Salt Concentration Profile in Concrete Pillar at t = {t_final:.2e} s")
     ax.legend()
     ax.grid()
     fig.tight_layout()
@@ -97,6 +98,31 @@ def plot_mms(params, filename="mms_heatmap.png"):
     ax.set_xlabel("r [m]")
     ax.set_ylabel("t [s]")
     ax.set_title("MMS Solution")
+    fig.tight_layout()
+
+    fig.savefig(os.path.join(_results_dir(params), filename), dpi=300)
+
+
+def plot_concentration_heatmap(params, filename="concentration_heatmap.png"):
+    """Heatmap of the numerical concentration C(r, t) for the physical problem.
+
+    Parameters
+    ----------
+    params : DiffusionParams
+        Solver parameters. mms is forced to False for the physical run.
+    filename : str
+        Output PNG filename.
+    """
+    from dataclasses import replace
+    params = replace(params, mms=False)
+    r_num, t_num, C_num = solve_diffusion(params)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    im = ax.pcolormesh(r_num, t_num, C_num, shading="auto", cmap="viridis")
+    fig.colorbar(im).set_label("C $[mol/m^3]$")
+    ax.set_xlabel("r [m]")
+    ax.set_ylabel("t [s]")
+    ax.set_title("Salt Concentration C(r, t) in Concrete Pillar")
     fig.tight_layout()
 
     fig.savefig(os.path.join(_results_dir(params), filename), dpi=300)
