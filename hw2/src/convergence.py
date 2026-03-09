@@ -13,9 +13,9 @@ def compute_error_norms(C_numerical, C_manufactured):
     Parameters
     ----------
     C_numerical : ndarray
-        Numerical solution.
-    C_analytical : ndarray
-        Analytical solution evaluated at the same grid points.
+        Numerical solution with source term.
+    C_manufactured : ndarray
+        Manufactured solution evaluated at the same grid points.
 
     Returns
     -------
@@ -31,14 +31,16 @@ def compute_error_norms(C_numerical, C_manufactured):
     return L1, L2, Linf
 
 def convergence_study(initial_grid_size=5, Nt=2000, t=1.0, num_refinements=8):
-    """Run a grid convergence study for the given finite difference scheme.
+    """Run a grid spatial convergence study for the given finite difference scheme.
 
     Parameters
     ----------
-    scheme : str
-        "forward" or "central".
     initial_grid_size : int
         Initial number of grid points (including boundaries).
+    Nt : float
+        Number of time steps.
+    t : float
+        Time duration for model [s].
     num_refinements : int
         Number of grid refinements to perform.
 
@@ -60,10 +62,6 @@ def convergence_study(initial_grid_size=5, Nt=2000, t=1.0, num_refinements=8):
         r, time, C_num = solve_diffusion(N, T_max=t, t_steps=Nt)
         C_ana = manufactured_solution(r, time)
         L1, L2, Linf = compute_error_norms(C_num, C_ana)
-        print(L1)
-
-        print(C_num.shape)
-        print(C_ana.shape)
 
         drs[i] = r[1] - r[0]
         L1s[i] = L1
@@ -85,15 +83,17 @@ def convergence_study(initial_grid_size=5, Nt=2000, t=1.0, num_refinements=8):
         "order_Linf": order_Linf,
     }
 
-def convergence_study_time(initial_grid_size=5, Nr=2000, t=1.0, R=0.5, num_refinements=8):
-    """Run a grid convergence study for the given finite difference scheme.
+def convergence_study_time(initial_grid_size=5, Nr=2000, t=1.0, num_refinements=8):
+    """Run a grid time convergence study for the given finite difference scheme.
 
     Parameters
     ----------
-    scheme : str
-        "forward" or "central".
     initial_grid_size : int
         Initial number of grid points (including boundaries).
+    Nr : float
+        Number of radial steps.
+    t : float
+        Time duration for model [s].
     num_refinements : int
         Number of grid refinements to perform.
 
@@ -120,11 +120,6 @@ def convergence_study_time(initial_grid_size=5, Nr=2000, t=1.0, R=0.5, num_refin
         L1s[i] = L1
         L2s[i] = L2
         Linfs[i] = Linf
-        print(L1)
-        print(Linf)
-
-        print(C_num.shape)
-        print(C_ana.shape)
 
     order_L1 = np.log(L1s[:-1] / L1s[1:]) / np.log(dts[:-1] / dts[1:])
     order_L2 = np.log(L2s[:-1] / L2s[1:]) / np.log(dts[:-1] / dts[1:])

@@ -5,14 +5,34 @@ Finite difference solver for steady-state radial diffusion (1D) in a cylinder.
 import numpy as np
 
 def S_MMS(r, t, R=0.5, D_eff=1e-10, k=4e-9):
+     """Computes the source term for MMS verification.
+
+    Parameters
+    ----------
+    r : float
+        Radial position [m].
+    t : float
+        Time [s].
+    R : float
+        Pillar radius [m].
+    D_eff : float
+        Effective diffusion coefficient [m2/s].
+    k : float
+        Reaction constant [1/s]
+
+    Returns
+    -------
+    S : float
+        Source term for MMS.
+    """
      S = np.exp(-t) * ((1 - ((r / R)**2)) * (k - 1) 
                        + (4 * D_eff) / (R**2)) 
      return S
 
-def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.0, k=4e-9):
+def solve_diffusion(N, T_max=1.0, t_steps=200, D_eff=1e-10, R=0.5, Ce=0.0, k=4e-9):
     """Solve the steady-state radial diffusion equation using finite differences.
 
-    D_eff * (d2C/dr2 + (1/r)*dC/dr) = S
+    dC/dt = D_eff * (d2C/dr2 + (1/r)*dC/dr) - kC
 
     with BCs:
         dC/dr = 0  at r=0  (symmetry)
@@ -22,24 +42,27 @@ def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.
     ----------
     N : int
         Number of grid points (including boundaries).
-    scheme : str
-        "forward" for O(Δr) forward difference on dC/dr (Scheme 1),
-        "central" for O(Δr2) central difference on dC/dr (Scheme 2).
-    S : float
-        Source term [mol/m3/s].
+    T_max : float
+        Model time duration [s].
+    t_steps : int
+        Number of time steps
     D_eff : float
         Effective diffusion coefficient [m2/s].
     R : float
         Pillar radius [m].
     Ce : float
         External concentration [mol/m3].
+    k : float
+        Reaction constant [1/s]
 
     Returns
     -------
     r : ndarray
         Radial grid positions, shape (N,).
-    C : ndarray
-        Numerical concentration solution, shape (N,).
+    time : ndarray
+        Time grid positions, shape (t_steps,).
+    C_all : ndarray
+        Numerical concentration solution, shape (t_steps, N).
     """
     
     dr = R / (N - 1)
@@ -47,7 +70,8 @@ def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.
     time = np.linspace(0, T_max, t_steps)
 
     dt = T_max / t_steps
-    C = np.zeros(N)
+    # MMS initial condition at time t = 0
+    C = 1 - (r/R)**2
     C_all = np.zeros((t_steps, N))
 
     A = np.zeros((N, N))
@@ -75,8 +99,8 @@ def solve_diffusion(N, T_max=1.0, t_steps=200, S=2e-8, D_eff=1e-10, R=0.5, Ce=0.
         
     # --- Homogenous Neumann BC @ R = 0: dC/dr = 0 ---
     A[0, 0] = -3.0
-    A[0, 1] = 4.0
-    A[0, 2] = -1.0
+    A[0, 1] = 4.0 
+    A[0, 2] = -1.0 
     b[0] = 0
 
     # --- Dirichlet BC @ r = R: C = Ce ---
