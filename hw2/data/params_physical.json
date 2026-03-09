@@ -1,0 +1,12 @@
+{
+  "D_eff": 1e-10,
+  "R": 0.5,
+  "Ce": 20.0,
+  "k": 4e-9,
+  "N_r": 11,
+  "N_t": 200,
+  "t_max": 4.0e9,
+  "mms": false,
+  "run_convergence": false,
+  "run_name": "physical"
+}

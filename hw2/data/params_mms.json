@@ -1,0 +1,16 @@
+{
+  "D_eff": 1.0,
+  "R": 1.0,
+  "Ce": 0.0,
+  "k": 1.0,
+  "N_r": 11,
+  "N_t": 200,
+  "t_max": 1.0,
+  "mms": true,
+  "mms_solution": "exp(-t) * (1 - (r/R)**4)",
+  "run_convergence": true,
+  "N_r_conv": 500,
+  "N_t_conv": 5000,
+  "num_refinements": 4,
+  "run_name": "mms"
+}
