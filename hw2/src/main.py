@@ -6,7 +6,7 @@ Usage
     python main.py path/to/params.json
 
 The params.json file controls all physical, numerical, convergence, and
-output parameters. See data/params.json for a reference template.
+output parameters. See data/params_template.json for a reference template.
 """
 
 import argparse
@@ -49,10 +49,20 @@ def main():
         print("\n>>> Running spatial convergence study (MMS)...")
         results_space = convergence_study_spatial(params)
         plot_convergence(params, results_space, filename="convergence_spatial.png")
+        print(f"  {'N_r':>6}  {'dr':>10}  {'L1':>10}  {'L2':>10}  {'Linf':>10}  {'p_L2':>6}")
+        for i, N in enumerate(results_space["N"]):
+            order = f"{results_space['order_L2'][i-1]:.3f}" if i > 0 else "—"
+            print(f"  {N:>6}  {results_space['dr'][i]:>10.4e}  {results_space['L1'][i]:>10.3e}"
+                  f"  {results_space['L2'][i]:>10.3e}  {results_space['Linf'][i]:>10.3e}  {order:>6}")
 
         print("\n>>> Running temporal convergence study (MMS)...")
         results_time = convergence_study_temporal(params)
         plot_convergence(params, results_time, ctime=True, filename="convergence_temporal.png")
+        print(f"  {'N_t':>6}  {'dt':>10}  {'L1':>10}  {'L2':>10}  {'Linf':>10}  {'p_L2':>6}")
+        for i, N in enumerate(results_time["N"]):
+            order = f"{results_time['order_L2'][i-1]:.3f}" if i > 0 else "—"
+            print(f"  {N:>6}  {results_time['dr'][i]:>10.4e}  {results_time['L1'][i]:>10.3e}"
+                  f"  {results_time['L2'][i]:>10.3e}  {results_time['Linf'][i]:>10.3e}  {order:>6}")
     else:
         print("\n>>> Skipping convergence studies (run_convergence=false).")
 

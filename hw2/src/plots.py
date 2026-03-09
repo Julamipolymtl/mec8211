@@ -53,7 +53,7 @@ def plot_convergence(params, results, ctime=False, filename="convergence_plot.pn
     params : DiffusionParams
         Used for run_name to determine output directory.
     results : dict
-        Output of convergence_study or convergence_study_time.
+        Output of convergence_study_spatial or convergence_study_temporal.
     ctime : bool
         If True, label the x-axis as dt instead of dr.
     filename : str
