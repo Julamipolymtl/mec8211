@@ -16,25 +16,20 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 
 def plot_concentration_profiles(N=5, filename="concentration_profile.png"):
     """
-    Plot numerical vs analytical concentration profiles for a given grid size and scheme.
+    Plot numerical concentration profile for a given grid size and scheme.
     
     Parameters
     ----------
     N : int
         Number of grid points (including boundaries) for the numerical solution.
-    scheme : str
-        Finite difference scheme to use ("forward" or "central").
     filename : str
         Name of the output PNG file to save the plot.
     """
 
-    r_num, C_num = solve_diffusion(N)
-    r_mms = np.linspace(0.0, 0.5, 500)
-    C_ana = manufactured_solution(r_mms)
+    r_num, t_num, C_num = solve_diffusion(N, T_max=4e9, Ce=20.0)
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(r_mms, C_ana, color="black", linewidth=2, label="MMS")
-    ax.plot(r_num, C_num, color="red", ls="--", marker="o", markersize=5, label=f"Numerical (N={N})")
+    ax.plot(r_num, C_num[-1, :], color="red", ls="--", marker="o", markersize=5, label=f"Numerical (N={N})")
     ax.set_xlabel("r [m]")
     ax.set_ylabel("C $[mol/m^3]$")
     ax.set_title("Salt Concentration Profile in Concrete Pillar")
@@ -45,14 +40,14 @@ def plot_concentration_profiles(N=5, filename="concentration_profile.png"):
     filepath = os.path.join(RESULTS_DIR, filename)
     fig.savefig(filepath, dpi=300)
     
-def plot_convergence(results, filename="convergence_plot.png"):
+def plot_convergence(results, ctime=False, filename="convergence_plot.png"):
     """
     Plot log-log convergence of error norms for a given finite difference scheme.
     
     Parameters
     ----------
-    scheme : str
-        Finite difference scheme to use ("forward" or "central").
+    ctime : Bool
+        If True, changes x axis label for delta t.
     filename : str
         Name of the output PNG file to save the plot.
     """
@@ -63,14 +58,9 @@ def plot_convergence(results, filename="convergence_plot.png"):
     for norm_name, marker in [("L1", "o"), ("L2", "s"), ("Linf", "^")]:
         ax.loglog(dr, results[norm_name], f"-{marker}", label=norm_name)
 
-    # Reference slopes for O(r) and O(r2)   
-    #dr_ref = np.array([dr.min(), dr.max()])
-    #scale1 = results["L2"][0] / dr[0]
-    #scale2 = results["L2"][0] / dr[0]**2
-    #ax.loglog(dr_ref, scale1 * dr_ref, "k--", label=r"$O(\Delta r)$")
-    #ax.loglog(dr_ref, scale2 * dr_ref**2, "k:", label=r"$O(\Delta r^2)$")
-
     ax.set_xlabel(r"$\Delta r$ [m]")
+    if ctime==True:
+        ax.set_xlabel(r"$\Delta t$ [s]")
     ax.set_ylabel("Error norm")
     ax.set_title(f"Convergence Analysis")
     ax.legend()
@@ -109,6 +99,13 @@ def plot_comparison(N=5, filename="concentration_profile_scheme_comparison.png")
     fig.savefig(filepath, dpi=300)
 
 def plot_mms(filename="mms_heatmap.png"):
+    """Plot MMS heatmap.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the output PNG file to save the plot.
+    """
     R = 0.5
     T_max = 3.0
 
@@ -134,6 +131,13 @@ def plot_mms(filename="mms_heatmap.png"):
     fig.savefig(filepath, dpi=300)  
 
 def plot_sourceterm(filename="mms_source.png"):
+    """Plot source term heatmap.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the output PNG file to save the plot.
+    """
     R = 0.5
     T_max = 3.0
 
