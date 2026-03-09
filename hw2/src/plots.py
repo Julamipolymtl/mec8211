@@ -7,157 +7,123 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-from analytical import manufactured_solution
-from solver import solve_diffusion, S_MMS
-from convergence import *
+from solver import DiffusionParams, solve_diffusion
 
-# Save plots in ../results/ relative to this script (in src/)
-RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results")
 
-def plot_concentration_profiles(N=5, filename="concentration_profile.png"):
-    """
-    Plot numerical concentration profile for a given grid size and scheme.
-    
+def _results_dir(params):
+    """Return the results directory for this run, creating it if needed."""
+    base = os.path.join(os.path.dirname(__file__), "..", "results")
+    path = os.path.join(base, params.run_name)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def plot_concentration_profiles(params, filename="concentration_profile.png"):
+    """Plot the physical concentration profile (no MMS source) at final time.
+
     Parameters
     ----------
-    N : int
-        Number of grid points (including boundaries) for the numerical solution.
+    params : DiffusionParams
+        Solver parameters. mms is forced to False for the physical run.
     filename : str
-        Name of the output PNG file to save the plot.
+        Output PNG filename.
     """
-
-    r_num, t_num, C_num = solve_diffusion(N, T_max=4e9, Ce=20.0)
+    from dataclasses import replace
+    params = replace(params, mms=False)
+    r_num, t_num, C_num = solve_diffusion(params)
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(r_num, C_num[-1, :], color="red", ls="--", marker="o", markersize=5, label=f"Numerical (N={N})")
+    ax.plot(r_num, C_num[-1, :], color="red", ls="--", marker="o",
+            markersize=5, label=f"Numerical (N={params.N_r})")
     ax.set_xlabel("r [m]")
     ax.set_ylabel("C $[mol/m^3]$")
     ax.set_title("Salt Concentration Profile in Concrete Pillar")
     ax.legend()
     ax.grid()
     fig.tight_layout()
-    
-    filepath = os.path.join(RESULTS_DIR, filename)
-    fig.savefig(filepath, dpi=300)
-    
-def plot_convergence(results, ctime=False, filename="convergence_plot.png"):
-    """
-    Plot log-log convergence of error norms for a given finite difference scheme.
-    
+
+    fig.savefig(os.path.join(_results_dir(params), filename), dpi=300)
+
+
+def plot_convergence(params, results, ctime=False, filename="convergence_plot.png"):
+    """Log-log convergence plot of L1, L2, and Linf error norms.
+
     Parameters
     ----------
-    ctime : Bool
-        If True, changes x axis label for delta t.
+    params : DiffusionParams
+        Used for run_name to determine output directory.
+    results : dict
+        Output of convergence_study or convergence_study_time.
+    ctime : bool
+        If True, label the x-axis as dt instead of dr.
     filename : str
-        Name of the output PNG file to save the plot.
+        Output PNG filename.
     """
-    
     dr = results["dr"]
     fig, ax = plt.subplots(figsize=(8, 5))
 
     for norm_name, marker in [("L1", "o"), ("L2", "s"), ("Linf", "^")]:
-        ax.loglog(dr, results[norm_name], f"-{marker}", label=norm_name)
+        mean_order = float(np.mean(results[f"order_{norm_name}"]))
+        label = f"{norm_name}  (p = {mean_order:.2f})"
+        ax.loglog(dr, results[norm_name], f"-{marker}", label=label)
 
-    ax.set_xlabel(r"$\Delta r$ [m]")
-    if ctime==True:
-        ax.set_xlabel(r"$\Delta t$ [s]")
+    ax.set_xlabel(r"$\Delta t$ [s]" if ctime else r"$\Delta r$ [m]")
     ax.set_ylabel("Error norm")
-    ax.set_title(f"Convergence Analysis")
+    ax.set_title("Convergence Analysis")
     ax.legend()
     ax.grid()
-    
-    filepath = os.path.join(RESULTS_DIR, filename)
-    fig.savefig(filepath, dpi=300)
-    
-def plot_comparison(N=5, filename="concentration_profile_scheme_comparison.png"):
-    """Plot concentration profiles for both forward and central schemes.
+
+    fig.savefig(os.path.join(_results_dir(params), filename), dpi=300)
+
+
+def plot_mms(params, filename="mms_heatmap.png"):
+    """Heatmap of the manufactured solution C_mms(r, t).
 
     Parameters
     ----------
-    N : int
-        Number of grid points (including boundaries) for the numerical solutions.
+    params : DiffusionParams
+        Used to derive C_fn and for t_max and run_name.
     filename : str
-        Name of the output PNG file to save the plot.
+        Output PNG filename.
     """
-    r_fwd, C_fwd = solve_diffusion(N)
-    r_ctr, C_ctr = solve_diffusion(N)
-    r_analytical = np.linspace(0.0, 0.5, 500)
-    C_ana = manufactured_solution(r_analytical)
+    C_fn, _ = params.mms_functions()
+    r = np.linspace(0, params.R, 200)
+    t = np.linspace(0, params.t_max, 200)
 
+    C_grid = C_fn(r[np.newaxis, :], t[:, np.newaxis])
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(r_analytical, C_ana, color="black", linewidth=2, label="Analytical")
-    ax.plot(r_fwd, C_fwd, color="red", ls="--", marker="o", markersize=5, label=f"Forward ({N} pts)")
-    ax.plot(r_ctr, C_ctr, color="blue", ls="--", marker="s", markersize=5, label=f"Central ({N} pts)")
-    ax.set_xlabel("r [m]")
-    ax.set_ylabel("C $[mol/m^3]$")
-    ax.set_title("Concentration Profiles: Forward vs Central Schemes")
-    ax.legend()
-    ax.grid()
-    fig.tight_layout()
-    
-    filepath = os.path.join(RESULTS_DIR, filename)
-    fig.savefig(filepath, dpi=300)
-
-def plot_mms(filename="mms_heatmap.png"):
-    """Plot MMS heatmap.
-
-    Parameters
-    ----------
-    filename : str
-        Name of the output PNG file to save the plot.
-    """
-    R = 0.5
-    T_max = 3.0
-
-    r = np.linspace(0, R, 200)
-    t = np.linspace(0, T_max, 200)
-    
-    #R_grid, T_grid = np.meshgrid(r, t)
-
-    C_grid = manufactured_solution(r, t)
-    fig, ax = plt.subplots(figsize=(8, 5))
-
     im = ax.pcolormesh(r, t, C_grid, shading="auto", cmap="viridis")
-    cbar = fig.colorbar(im)
-    cbar.set_label("C $[mol/m^3]$")
-
+    fig.colorbar(im).set_label("C $[mol/m^3]$")
     ax.set_xlabel("r [m]")
     ax.set_ylabel("t [s]")
     ax.set_title("MMS Solution")
-
     fig.tight_layout()
-    
-    filepath = os.path.join(RESULTS_DIR, filename)
-    fig.savefig(filepath, dpi=300)  
 
-def plot_sourceterm(filename="mms_source.png"):
-    """Plot source term heatmap.
+    fig.savefig(os.path.join(_results_dir(params), filename), dpi=300)
+
+
+def plot_sourceterm(params, filename="mms_source.png"):
+    """Heatmap of the MMS source term S_mms(r, t).
 
     Parameters
     ----------
+    params : DiffusionParams
+        Used to derive S_fn and for t_max and run_name.
     filename : str
-        Name of the output PNG file to save the plot.
+        Output PNG filename.
     """
-    R = 0.5
-    T_max = 3.0
-
-    r = np.linspace(0, R, 200)
-    t = np.linspace(0, T_max, 200)
-    
+    _, S_fn = params.mms_functions()
+    r = np.linspace(0, params.R, 200)
+    t = np.linspace(0, params.t_max, 200)
     R_grid, T_grid = np.meshgrid(r, t)
 
-    C_grid = S_MMS(R_grid, T_grid)
+    S_grid = S_fn(R_grid, T_grid)
     fig, ax = plt.subplots(figsize=(8, 5))
-
-    im = ax.pcolormesh(r, t, C_grid, shading="auto", cmap="viridis")
-    cbar = fig.colorbar(im)
-    cbar.set_label("S $[mol/m^3]$")
-
+    im = ax.pcolormesh(r, t, S_grid, shading="auto", cmap="viridis")
+    fig.colorbar(im).set_label("S $[mol/m^3/s]$")
     ax.set_xlabel("r [m]")
     ax.set_ylabel("t [s]")
-    ax.set_title("Terme Source")
-
+    ax.set_title("MMS Source Term")
     fig.tight_layout()
-    
-    filepath = os.path.join(RESULTS_DIR, filename)
-    fig.savefig(filepath, dpi=300)  
+
+    fig.savefig(os.path.join(_results_dir(params), filename), dpi=300)
