@@ -117,11 +117,13 @@ def plot_concentration_heatmap(params, filename="concentration_heatmap.png"):
     params = replace(params, mms=False)
     r_num, t_num, C_num = solve_diffusion(params)
 
+    # Drop t=0 (log-undefined) for the log-scale axis
     fig, ax = plt.subplots(figsize=(8, 5))
-    im = ax.pcolormesh(r_num, t_num, C_num, shading="auto", cmap="viridis")
+    im = ax.pcolormesh(r_num, t_num[1:], C_num[1:, :], shading="auto", cmap="viridis")
     fig.colorbar(im).set_label("C $[mol/m^3]$")
     ax.set_xlabel("r [m]")
     ax.set_ylabel("t [s]")
+    ax.set_yscale("log")
     ax.set_title("Salt Concentration C(r, t) in Concrete Pillar")
     fig.tight_layout()
 

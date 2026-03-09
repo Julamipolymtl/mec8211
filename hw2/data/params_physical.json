@@ -4,7 +4,7 @@
   "Ce": 20.0,
   "k": 4e-9,
   "N_r": 11,
-  "N_t": 200,
+  "N_t": 2000,
   "t_max": 4.0e9,
   "mms": false,
   "run_convergence": false,
