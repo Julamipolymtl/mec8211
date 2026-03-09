@@ -42,13 +42,15 @@ def convergence_study_spatial(base_params):
     base_params : DiffusionParams
         Provides all parameters. Physical params (D_eff, R, k) and convergence
         settings (N_t_conv, num_refinements, t_max) are used directly.
-        Ce is forced to 0 and mms to True for MMS verification.
+        Ce and mms are taken from base_params unchanged.
 
     Returns
     -------
     results : dict
         Keys: "N", "dr", "L1", "L2", "Linf", "order_L1", "order_L2", "order_Linf".
     """
+    if not base_params.mms:
+        raise ValueError("convergence_study_spatial requires mms=True in base_params.")
     N_t            = base_params.N_t_conv
     t_max          = base_params.t_max
     num_refinements = base_params.num_refinements
@@ -107,7 +109,7 @@ def convergence_study_temporal(base_params):
     base_params : DiffusionParams
         Provides all parameters. Physical params (D_eff, R, k) and convergence
         settings (N_r_conv, num_refinements, t_max) are used directly.
-        Ce is forced to 0 and mms to True for MMS verification.
+        Ce and mms are taken from base_params unchanged.
 
     Returns
     -------
@@ -115,6 +117,8 @@ def convergence_study_temporal(base_params):
         Keys: "N", "dr", "L1", "L2", "Linf", "order_L1", "order_L2", "order_Linf".
         "dr" holds dt values for this study.
     """
+    if not base_params.mms:
+        raise ValueError("convergence_study_temporal requires mms=True in base_params.")
     N_r            = base_params.N_r_conv
     t_max          = base_params.t_max
     num_refinements = base_params.num_refinements
