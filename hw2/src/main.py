@@ -13,6 +13,7 @@ import argparse
 import os
 
 from plots import (
+    plot_concentration_heatmap,
     plot_concentration_profiles,
     plot_convergence,
     plot_mms,
@@ -66,8 +67,11 @@ def main():
     else:
         print("\n>>> Skipping convergence studies (run_convergence=false).")
 
-    print("\n>>> Plotting physical concentration profile...")
+    print(f"\n>>> Plotting physical concentration profile at final time t = {params.t_max:.2e} s...")
     plot_concentration_profiles(params, filename="concentration_profile.png")
+
+    print("\n>>> Plotting concentration heatmap C(r, t)...")
+    plot_concentration_heatmap(params, filename="concentration_heatmap.png")
 
     print(f"\nDone. All figures saved to results/{params.run_name}/")
 
