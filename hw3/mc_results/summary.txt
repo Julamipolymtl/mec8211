@@ -1,0 +1,7 @@
+N_samples = 50
+mu_log = 3.335438
+sigma_log = 0.135887
+median_k = 28.090683
+FVG = 1.145553
+u_input_minus = 3.569175
+u_input_plus = 4.088678
