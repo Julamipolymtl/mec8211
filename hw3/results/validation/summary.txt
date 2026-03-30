@@ -1,0 +1,32 @@
+=======================================================
+VALIDATION ASME V&V20
+=======================================================
+
+--- Partie C : incertitude experimentale ---
+  sigma_repro    = 14.70 um^2
+  sigma_permea   = 10.00 um^2
+  u_D            = 17.7789 um^2
+
+--- Partie D : erreur de simulation ---
+  S (median num) = 28.0907 um^2
+  D (median exp) = 80.6000 um^2
+  E = S - D      = -52.5093 um^2
+
+--- Partie E : validation ---
+  p_hat (observe) = 2.3480
+  p (clamp)       = 2.0000
+  r               = 2.0000
+  u_num (GCI)     = 0.1564 um^2
+  u_input         = 4.0887 um^2  (max bornes asymetriques)
+  u_D             = 17.7789 um^2
+  u_val           = 18.2437 um^2
+  U_val = k*u_val = 36.4874 um^2  (k=2)
+  C*U_val         = 255.4115 um^2  (C=7)
+  |E|             = 52.5093 um^2
+
+  delta_model (estimation directe) = -38.9755 um^2
+
+  Cas 3a : C*U_val >= |E| >= U_val
+  |delta_model| < |E| + U_val = 88.9967 um^2
+  signe(delta_model) = signe(E) < 0 (sous-estimation)
+=======================================================
