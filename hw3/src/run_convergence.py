@@ -109,7 +109,7 @@ def tracer_resultats(dx_vals, k_vals, erreur, ordre):
 
 def enregistrer_donnees(dx_vals, k_vals, erreur, ordre, u_num, domaine, seed):
     """Sauvegarde les resultats dans un fichier texte."""
-    nom_fichier = CONV_DIR / "resultats_convergence.txt"
+    nom_fichier = CONV_DIR / "resultats_convergence.dat"
     k_ref = k_vals[-1]
 
     with open(nom_fichier, "w") as f:

@@ -18,7 +18,7 @@ K_COVERAGE = 2    # k = 2 pour intervalle 95.4% (ASME V&V20)
 # ============================================================
 def lire_convergence():
     """Lit les k_moy et dx depuis le fichier de convergence."""
-    fichier = RESULTS_DIR / "convergence" / "resultats_convergence.txt"
+    fichier = RESULTS_DIR / "convergence" / "resultats_convergence.dat"
     dx_vals = []
     k_moy_vals = []
     with open(fichier, encoding="latin-1") as f:
@@ -36,7 +36,7 @@ def lire_convergence():
 # ============================================================
 def lire_montecarlo():
     """Lit median_k et u_input depuis le fichier de synthese MC."""
-    fichier = RESULTS_DIR / "montecarlo" / "summary.txt"
+    fichier = RESULTS_DIR / "montecarlo" / "summary.dat"
     resultats = {}
     with open(fichier) as f:
         for ligne in f:
@@ -161,10 +161,10 @@ def main():
     for l in lignes:
         print(l)
 
-    with open(val_dir / "summary.txt", "w") as f:
+    with open(val_dir / "summary.dat", "w") as f:
         f.write("\n".join(lignes) + "\n")
 
-    print(f"\nResultats sauvegardes dans {val_dir / 'summary.txt'}")
+    print(f"\nResultats sauvegardes dans {val_dir / 'summary.dat'}")
 
 
 if __name__ == "__main__":

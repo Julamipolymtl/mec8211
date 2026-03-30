@@ -42,7 +42,7 @@ def main(delta_p, mean_fiber_d, std_d, poro_mean, poro_std, dx, nx, n_samples):
         plt.close("all")
 
         np.savetxt(
-            mc_dir / "permeabilities.txt",
+            mc_dir / "permeabilities.dat",
             np.column_stack([
                 porosities[:len(permeabilities)],
                 poro_eff_vals,
@@ -86,7 +86,7 @@ def main(delta_p, mean_fiber_d, std_d, poro_mean, poro_std, dx, nx, n_samples):
     print(f"Mean k:           {np.mean(permeabilities):.4f} um2")
     print(f"Std k:            {np.std(permeabilities, ddof=1):.4f} um2")
 
-    with open(mc_dir / "summary.txt", "w") as f:
+    with open(mc_dir / "summary.dat", "w") as f:
         f.write(f"N_samples = {len(permeabilities)}\n")
         f.write(f"mu_log = {mu_log:.6f}\n")
         f.write(f"sigma_log = {sigma_log:.6f}\n")

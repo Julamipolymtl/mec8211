@@ -1,3 +1,0 @@
-# porosity_demandee	porosity_effective	k_micron2
-0.902285 0.902675 31.945012
-0.892200 0.892225 25.596138
