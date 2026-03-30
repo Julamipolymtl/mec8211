@@ -24,7 +24,7 @@ def etude_convergence(seed, delta_p, poro, mean_fiber_d, std_d, dx_base, nx_base
         dx = dx_base / r
         nx = int(domaine / dx)
 
-        nom_fichier = f"fiber_s{seed}_nx{nx}.tiff"
+        nom_fichier = str(CONV_DIR / f"fiber_s{seed}_nx{nx}.tiff")
         print(f"\nnx = {nx}, dx = {dx:.2e}")
 
         d_eq = lbm.Generate_sample(seed, nom_fichier, mean_fiber_d, std_d, poro, nx, dx)
@@ -60,11 +60,13 @@ def analyser_resultats(dx_vals, k_vals, raff, domaine, seed):
 
     print("\nErreurs relatives :", erreur)
 
-    # Ordre par fit log-log (on exclut le point de reference)
+    # Ordre par fit log-log sur les 2 derniers points valides uniquement
     mask = (erreur > 0) & np.isfinite(erreur)
     ordre = None
-    if mask.sum() >= 2:
-        p = np.polyfit(np.log(dx_vals[mask]), np.log(erreur[mask]), 1)
+    valid_indices = np.where(mask)[0]
+    if len(valid_indices) >= 2:
+        last2 = valid_indices[-2:]
+        p = np.polyfit(np.log(dx_vals[last2]), np.log(erreur[last2]), 1)
         ordre = p[0]
         print(f"\nOrdre de convergence estimé : {ordre:.4f}")
     else:
@@ -136,5 +138,5 @@ if __name__ == "__main__":
         std_d=2.85,
         dx_base=2e-6,
         nx_base=100,
-        raff=[0.5, 0.75, 1, 1.5, 2, 4],
+        raff=[1, 2, 4, 8, 16],
     )
