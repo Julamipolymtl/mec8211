@@ -7,13 +7,14 @@ Solveur Lattice Boltzmann (D2Q9) pour calculer la permeabilite d'un mat de fibre
 ```
 src/
   devoir3_lbm_accelerated.py      # Solveur LBM (blackbox, fourni)
-  convergence.py                  # Convergence single-seed
-  run_convergence.py              # Convergence multi-seed (Part A)
-  run_uncertainty_propagation.py  # Monte Carlo (Part B)
-data/
+  run_convergence.py              # Etude de convergence (Part A)
+  run_uncertainty_propagation.py  # Propagation d'incertitude Monte Carlo (Part B)
+  run_validation.py               # Validation ASME V&V20 (Part C-E)
 results/
+  convergence/                    # Resultats Part A
+  montecarlo/                     # Resultats Part B
+  validation/                     # Resultats Part C-E
 doc/
-tests/
 ```
 
 ## Utilisation
@@ -23,9 +24,10 @@ Depuis `hw3/` :
 ```bash
 python src/run_convergence.py
 python src/run_uncertainty_propagation.py
+python src/run_validation.py
 ```
 
-Resultats dans `results/`.
+Resultats dans `results/` (fichiers `.dat`, non suivis par git).
 
 ## IA
 
