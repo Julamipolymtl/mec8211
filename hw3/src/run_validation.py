@@ -5,11 +5,11 @@ import numpy as np
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 
 # ============================================================
-# Donnees experimentales (Tableau 1)
+# Données expérimentales (Tableau 1)
 # ============================================================
-D = 80.6          # Permeabilite mediane mesuree [um^2]
-SIGMA_REPRO = 14.7  # Ecart-type reproductibilite [um^2]
-SIGMA_PERMEA = 10.0  # Incertitude permeametre [um^2]
+D = 80.6          # Perméabilité médiane mesurée [um^2]
+SIGMA_REPRO = 14.7  # Écart-type reproductibilité [um^2]
+SIGMA_PERMEA = 10.0  # Incertitude perméamètre [um^2]
 K_COVERAGE = 2    # k = 2 pour intervalle 95.4% (ASME V&V20)
 
 
@@ -35,7 +35,7 @@ def lire_convergence():
 # Lecture des resultats Part B (Monte Carlo)
 # ============================================================
 def lire_montecarlo():
-    """Lit median_k et u_input depuis le fichier de synthese MC."""
+    """Lit median_k et u_input depuis le fichier de synthèse MC."""
     fichier = RESULTS_DIR / "montecarlo" / "summary.dat"
     resultats = {}
     with open(fichier) as f:
@@ -52,7 +52,7 @@ def main():
     val_dir = RESULTS_DIR / "validation"
     val_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- Lecture des donnees ---
+    # --- Lecture des données ---
     dx_vals, k_moy = lire_convergence()
     mc = lire_montecarlo()
 
@@ -96,8 +96,8 @@ def main():
     u_val = np.sqrt(u_num**2 + u_input**2 + u_D**2)
     U_val = K_COVERAGE * u_val
 
-    # Estimation directe de delta_model (hypothese : biais numerique et input
-    # s'opposent a E, biais experimental va dans le sens de E)
+    # Estimation directe de delta_model (hypothèse : biais numérique et input
+    # s'opposent à E, biais expérimental va dans le sens de E)
     delta_model_est = E - u_num - u_input + u_D
 
     # Analyse V&V20 par cas (C = 7 selon notes de cours)
@@ -130,7 +130,7 @@ def main():
         "VALIDATION ASME V&V20",
         "=" * 55,
         "",
-        "--- Partie C : incertitude experimentale ---",
+        "--- Partie C : incertitude expérimentale ---",
         f"  sigma_repro    = {SIGMA_REPRO:.2f} um^2",
         f"  sigma_permea   = {SIGMA_PERMEA:.2f} um^2",
         f"  u_D            = {u_D:.4f} um^2",
@@ -145,7 +145,7 @@ def main():
         f"  p (clamp)       = {p_clamp:.4f}",
         f"  r               = {r:.4f}",
         f"  u_num (GCI)     = {u_num:.4f} um^2",
-        f"  u_input         = {u_input:.4f} um^2  (max bornes asymetriques)",
+        f"  u_input         = {u_input:.4f} um^2  (max bornes asymétriques)",
         f"  u_D             = {u_D:.4f} um^2",
         f"  u_val           = {u_val:.4f} um^2",
         f"  U_val = k*u_val = {U_val:.4f} um^2  (k={K_COVERAGE})",

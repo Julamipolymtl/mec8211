@@ -34,7 +34,7 @@ def main(delta_p, mean_fiber_d, std_d, poro_mean, poro_std, dx, nx, n_samples):
         img = np.array(Image.open(filename)).astype(bool)
         poro_eff = 1.0 - img.sum() / img.size
         poro_eff_vals.append(poro_eff)
-        print(f"  poro demandee = {poro:.5f}, poro effective = {poro_eff:.5f}, "
+        print(f"  poro demandée = {poro:.5f}, poro effective = {poro_eff:.5f}, "
               f"erreur = {abs(poro_eff - poro):.5f}")
 
         k_val = lbm.LBM(filename, nx, delta_p, dx, d_eq)
@@ -48,7 +48,7 @@ def main(delta_p, mean_fiber_d, std_d, poro_mean, poro_std, dx, nx, n_samples):
                 poro_eff_vals,
                 permeabilities,
             ]),
-            header="porosity_demandee\tporosity_effective\tk_micron2",
+            header="porosity_demandée\tporosity_effective\tk_micron2",
             fmt="%.6f",
         )
 
@@ -58,7 +58,7 @@ def main(delta_p, mean_fiber_d, std_d, poro_mean, poro_std, dx, nx, n_samples):
     poro_eff_vals = np.array(poro_eff_vals)
     poro_errors = np.abs(poro_eff_vals - porosities)
 
-    print(f"\nVerification porosite effective :")
+    print(f"\nVérification porosité effective :")
     print(f"  erreur max  = {poro_errors.max():.5f}")
     print(f"  erreur moy  = {poro_errors.mean():.5f}")
 
@@ -105,10 +105,10 @@ def main(delta_p, mean_fiber_d, std_d, poro_mean, poro_std, dx, nx, n_samples):
     x_plot = np.linspace(permeabilities.min() * 0.8, permeabilities.max() * 1.2, 200)
     pdf_fit = stats.lognorm.pdf(x_plot, s=sigma_log, scale=np.exp(mu_log))
     ax.plot(x_plot, pdf_fit, "r-", lw=2, label="Fit log-normal")
-    ax.axvline(median_k, color="k", ls="--", label=f"Mediane = {median_k:.1f}")
-    ax.set_xlabel(r"Permeabilite k [$\mu m^2$]")
-    ax.set_ylabel("Densite de probabilite")
-    ax.set_title("PDF des permeabilites (Monte Carlo)")
+    ax.axvline(median_k, color="k", ls="--", label=f"Médiane = {median_k:.1f}")
+    ax.set_xlabel(r"Perméabilité k [$\mu m^2$]")
+    ax.set_ylabel("Densité de probabilité")
+    ax.set_title("PDF des perméabilités (Monte Carlo)")
     ax.legend()
 
     ax = axes[1]
@@ -117,23 +117,39 @@ def main(delta_p, mean_fiber_d, std_d, poro_mean, poro_std, dx, nx, n_samples):
     ax.step(k_sorted, cdf_emp, where="post", label="CDF empirique")
     cdf_fit = stats.lognorm.cdf(x_plot, s=sigma_log, scale=np.exp(mu_log))
     ax.plot(x_plot, cdf_fit, "r-", lw=2, label="Fit log-normal")
-    ax.axvline(median_k, color="k", ls="--", label=f"Mediane = {median_k:.1f}")
-    ax.set_xlabel(r"Permeabilite k [$\mu m^2$]")
+    ax.axvline(median_k, color="k", ls="--", label=f"Médiane = {median_k:.1f}")
+    ax.set_xlabel(r"Perméabilité k [$\mu m^2$]")
     ax.set_ylabel("CDF")
-    ax.set_title("CDF des permeabilites (Monte Carlo)")
+    ax.set_title("CDF des perméabilités (Monte Carlo)")
     ax.legend()
 
     plt.tight_layout()
     plt.savefig(mc_dir / "pdf_cdf.png", dpi=300)
-    print(f"\nFigures sauvegardees dans {mc_dir}")
+    print(f"\nFigures sauvegardées dans {mc_dir}")
 
     plt.figure()
     plt.scatter(porosities, permeabilities, alpha=0.7)
-    plt.xlabel("Porosite")
-    plt.ylabel(r"Permeabilite k [$\mu m^2$]")
-    plt.title("Permeabilite vs Porosite (Monte Carlo)")
+    plt.xlabel("Porosité")
+    plt.ylabel(r"Perméabilité k [$\mu m^2$]")
+    plt.title("Perméabilité vs Porosité (Monte Carlo)")
     plt.grid(True)
     plt.savefig(mc_dir / "poro_vs_k.png", dpi=300)
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.scatter(porosities, poro_eff_vals, alpha=0.7)
+    lims = [min(porosities.min(), poro_eff_vals.min()) - 0.002,
+            max(porosities.max(), poro_eff_vals.max()) + 0.002]
+    ax.plot(lims, lims, "k--", lw=1, label="Parité parfaite")
+    ax.set_xlim(lims)
+    ax.set_ylim(lims)
+    ax.set_xlabel("Porosité demandée")
+    ax.set_ylabel("Porosité effective")
+    ax.set_title("Parité porosité demandée vs effective")
+    ax.legend()
+    ax.grid(True)
+    ax.set_aspect("equal")
+    plt.tight_layout()
+    plt.savefig(mc_dir / "poro_parity.png", dpi=300)
 
 
 if __name__ == "__main__":
@@ -143,7 +159,7 @@ if __name__ == "__main__":
         std_d=2.85,
         poro_mean=0.900,
         poro_std=7.50e-3,
-        dx=1e-6,       # maillage fin d'apres Part A (nx=200)
+        dx=1e-6,       # maillage fin d'après Part A (nx=200)
         nx=200,
         n_samples=50,
     )

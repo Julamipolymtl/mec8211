@@ -12,8 +12,8 @@ CONV_DIR = RESULTS_DIR / "convergence"
 
 
 def etude_convergence(seed, delta_p, poro, mean_fiber_d, std_d, dx_base, nx_base, raff):
-    """Etude de convergence single-seed, geometrie fixee."""
-    (CONV_DIR / "figures").mkdir(parents=True, exist_ok=True)
+    """Étude de convergence single-seed, géométrie fixée."""
+    CONV_DIR.mkdir(parents=True, exist_ok=True)
 
     domaine = nx_base * dx_base
 
@@ -47,14 +47,14 @@ def sauvegarder_figures(prefixe):
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(
-            CONV_DIR / f"figures/{prefixe}_fig{i}.png",
+            CONV_DIR / f"{prefixe}_fig{i}.png",
             dpi=300,
             bbox_inches="tight",
         )
 
 
 def analyser_resultats(dx_vals, k_vals, raff, domaine, seed):
-    """Analyse des resultats et estimation de l'ordre de convergence."""
+    """Analyse des résultats et estimation de l'ordre de convergence."""
     k_ref = k_vals[-1]
     erreur = np.abs((k_ref - k_vals) / k_ref)
 
@@ -66,11 +66,11 @@ def analyser_resultats(dx_vals, k_vals, raff, domaine, seed):
     if mask.sum() >= 2:
         p = np.polyfit(np.log(dx_vals[mask]), np.log(erreur[mask]), 1)
         ordre = p[0]
-        print(f"\nOrdre de convergence estime : {ordre:.4f}")
+        print(f"\nOrdre de convergence estimé : {ordre:.4f}")
     else:
         print("\nPas assez de points valides pour estimer l'ordre.")
 
-    # u_num par extrapolation de Richardson (r=2 entre maillages consecutifs)
+    # u_num par extrapolation de Richardson (r=2 entre maillages consécutifs)
     r = raff[-1] / raff[-2]
     u_num = None
     if ordre is not None and ordre > 0:
@@ -78,7 +78,7 @@ def analyser_resultats(dx_vals, k_vals, raff, domaine, seed):
         print(f"u_num (Richardson) : {u_num:.4f} um^2")
         print(f"u_num / k_ref      : {u_num / k_ref:.4f}")
     else:
-        print("u_num non calcule (ordre invalide).")
+        print("u_num non calculé (ordre invalide).")
 
     tracer_resultats(dx_vals, k_vals, erreur, ordre)
     enregistrer_donnees(dx_vals, k_vals, erreur, ordre, u_num, domaine, seed)
@@ -96,19 +96,19 @@ def tracer_resultats(dx_vals, k_vals, erreur, ordre):
     plt.title("Convergence spatiale de k")
     plt.legend()
     plt.grid(True, which="both")
-    plt.savefig(CONV_DIR / "figures/convergence.png", dpi=300, bbox_inches="tight")
+    plt.savefig(CONV_DIR / "convergence.png", dpi=300, bbox_inches="tight")
 
     plt.figure()
     plt.semilogx(dx_vals, k_vals, "o-")
     plt.xlabel("dx [m]")
-    plt.ylabel("Permeabilite k [µm²]")
-    plt.title("Permeabilite en fonction de dx")
+    plt.ylabel("Perméabilité k [µm²]")
+    plt.title("Perméabilité en fonction de dx")
     plt.grid(True)
-    plt.savefig(CONV_DIR / "figures/permeabilite.png", dpi=300, bbox_inches="tight")
+    plt.savefig(CONV_DIR / "permeabilite.png", dpi=300, bbox_inches="tight")
 
 
 def enregistrer_donnees(dx_vals, k_vals, erreur, ordre, u_num, domaine, seed):
-    """Sauvegarde les resultats dans un fichier texte."""
+    """Sauvegarde les résultats dans un fichier texte."""
     nom_fichier = CONV_DIR / "resultats_convergence.dat"
     k_ref = k_vals[-1]
 
@@ -119,12 +119,12 @@ def enregistrer_donnees(dx_vals, k_vals, erreur, ordre, u_num, domaine, seed):
             nx = int(domaine / dx)
             f.write(f"{nx}\t {dx:.3e}\t {k_vals[i]:.6f}\t {erreur[i]:.6f}\n")
         if ordre is not None:
-            f.write(f"\n# Ordre de convergence estime : {ordre:.4f}\n")
+            f.write(f"\n# Ordre de convergence estimé : {ordre:.4f}\n")
         if u_num is not None:
             f.write(f"# u_num (Richardson)          : {u_num:.6f} um^2\n")
             f.write(f"# u_num / k_ref               : {u_num / k_ref:.6f}\n")
 
-    print(f"\nDonnees sauvegardees dans {nom_fichier}")
+    print(f"\nDonnées sauvegardées dans {nom_fichier}")
 
 
 if __name__ == "__main__":
