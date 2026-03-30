@@ -13,7 +13,7 @@ def analytical_solution(r, S=2e-8, D_eff=1e-10, R=0.5, Ce=20.0):
     Parameters
     ----------
     r : array_like
-        Radial positions [m].
+        Radial positions [m].  The dtype of r is preserved in the output.
     S : float
         Source term [mol/m3/s].
     D_eff : float
@@ -28,4 +28,6 @@ def analytical_solution(r, S=2e-8, D_eff=1e-10, R=0.5, Ce=20.0):
     C : ndarray
         Concentration at each radial position [mol/m3].
     """
-    return 0.25 * (S / D_eff) * (r * r - R * R) + Ce
+    dtype = np.asarray(r).dtype
+    S, D_eff, R, Ce = dtype.type(S), dtype.type(D_eff), dtype.type(R), dtype.type(Ce)
+    return dtype.type(0.25) * (S / D_eff) * (r * r - R * R) + Ce

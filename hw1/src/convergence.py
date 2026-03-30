@@ -29,7 +29,8 @@ def compute_error_norms(C_numerical, C_analytical):
     Linf = np.max(error)
     return L1, L2, Linf
 
-def convergence_study(scheme="forward", initial_grid_size=5, num_refinements=8):
+def convergence_study(scheme="forward", initial_grid_size=5, num_refinements=8,
+                      dtype=np.longdouble):
     """Run a grid convergence study for the given finite difference scheme.
 
     Parameters
@@ -40,6 +41,10 @@ def convergence_study(scheme="forward", initial_grid_size=5, num_refinements=8):
         Initial number of grid points (including boundaries).
     num_refinements : int
         Number of grid refinements to perform.
+    dtype : numpy dtype, optional
+        Floating-point precision passed to solve_diffusion.  Default is
+        np.longdouble so round-off saturates at a lower h (useful for the
+        2nd-order central scheme).  Use np.float64 for standard doubles.
 
     Returns
     -------
@@ -47,16 +52,16 @@ def convergence_study(scheme="forward", initial_grid_size=5, num_refinements=8):
         Keys: "N", "dr", "L1", "L2", "Linf", "order_L1", "order_L2", "order_Linf".
         Each value is a list (or array) over refinement levels.
     """
-    drs = np.empty(num_refinements)
-    L1s = np.empty(num_refinements)
-    L2s = np.empty(num_refinements)
-    Linfs = np.empty(num_refinements)
+    drs  = np.empty(num_refinements, dtype=dtype)
+    L1s  = np.empty(num_refinements, dtype=dtype)
+    L2s  = np.empty(num_refinements, dtype=dtype)
+    Linfs = np.empty(num_refinements, dtype=dtype)
     
     # Divide the domain by 2 at each refinement.
     grid_sizes = [(initial_grid_size-1) * (2**i) + 1 for i in range(num_refinements)]
     
     for i, N in enumerate(grid_sizes):
-        r, C_num = solve_diffusion(N, scheme=scheme)
+        r, C_num = solve_diffusion(N, scheme=scheme, dtype=dtype)
         C_ana = analytical_solution(r)
         L1, L2, Linf = compute_error_norms(C_num, C_ana)
 
