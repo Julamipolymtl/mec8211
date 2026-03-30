@@ -17,14 +17,20 @@ results/
 doc/
 ```
 
-## Utilisation
-
-Depuis `hw3/` :
+## Dependances
 
 ```bash
-python src/run_convergence.py
-python src/run_uncertainty_propagation.py
-python src/run_validation.py
+pip install numpy matplotlib scipy Pillow
+```
+
+## Utilisation
+
+Les scripts doivent etre executes dans l'ordre depuis `hw3/` :
+
+```bash
+python src/run_convergence.py              # Part A - genere results/convergence/
+python src/run_uncertainty_propagation.py  # Part B - genere results/montecarlo/
+python src/run_validation.py               # Part C-E - lit les resultats A et B
 ```
 
 Resultats dans `results/` (fichiers `.dat`, non suivis par git).
