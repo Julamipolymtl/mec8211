@@ -33,6 +33,10 @@ python src/run_uncertainty_propagation.py  # Part B - genere results/montecarlo/
 python src/run_validation.py               # Part C-E - lit les resultats A et B
 ```
 
+Les simulations LBM sont longues. Les scripts sont donc separes et sauvegardent leurs
+resultats dans `results/` au fur et a mesure. `run_validation.py` lit ces fichiers
+plutot que de relancer les simulations, ce qui permet de valider sans tout recalculer.
+
 Resultats dans `results/` (fichiers `.dat`, non suivis par git).
 
 ## IA
