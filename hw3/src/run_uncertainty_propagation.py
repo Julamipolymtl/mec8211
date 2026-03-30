@@ -135,6 +135,22 @@ def main(delta_p, mean_fiber_d, std_d, poro_mean, poro_std, dx, nx, n_samples):
     plt.grid(True)
     plt.savefig(mc_dir / "poro_vs_k.png", dpi=300)
 
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.scatter(porosities, poro_eff_vals, alpha=0.7)
+    lims = [min(porosities.min(), poro_eff_vals.min()) - 0.002,
+            max(porosities.max(), poro_eff_vals.max()) + 0.002]
+    ax.plot(lims, lims, "k--", lw=1, label="Parite parfaite")
+    ax.set_xlim(lims)
+    ax.set_ylim(lims)
+    ax.set_xlabel("Porosite demandee")
+    ax.set_ylabel("Porosite effective")
+    ax.set_title("Parite porosite demandee vs effective")
+    ax.legend()
+    ax.grid(True)
+    ax.set_aspect("equal")
+    plt.tight_layout()
+    plt.savefig(mc_dir / "poro_parity.png", dpi=300)
+
 
 if __name__ == "__main__":
     main(

@@ -13,7 +13,7 @@ CONV_DIR = RESULTS_DIR / "convergence"
 
 def etude_convergence(seed, delta_p, poro, mean_fiber_d, std_d, dx_base, nx_base, raff):
     """Etude de convergence single-seed, geometrie fixee."""
-    (CONV_DIR / "figures").mkdir(parents=True, exist_ok=True)
+    CONV_DIR.mkdir(parents=True, exist_ok=True)
 
     domaine = nx_base * dx_base
 
@@ -47,7 +47,7 @@ def sauvegarder_figures(prefixe):
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(
-            CONV_DIR / f"figures/{prefixe}_fig{i}.png",
+            CONV_DIR / f"{prefixe}_fig{i}.png",
             dpi=300,
             bbox_inches="tight",
         )
@@ -96,7 +96,7 @@ def tracer_resultats(dx_vals, k_vals, erreur, ordre):
     plt.title("Convergence spatiale de k")
     plt.legend()
     plt.grid(True, which="both")
-    plt.savefig(CONV_DIR / "figures/convergence.png", dpi=300, bbox_inches="tight")
+    plt.savefig(CONV_DIR / "convergence.png", dpi=300, bbox_inches="tight")
 
     plt.figure()
     plt.semilogx(dx_vals, k_vals, "o-")
@@ -104,7 +104,7 @@ def tracer_resultats(dx_vals, k_vals, erreur, ordre):
     plt.ylabel("Permeabilite k [µm²]")
     plt.title("Permeabilite en fonction de dx")
     plt.grid(True)
-    plt.savefig(CONV_DIR / "figures/permeabilite.png", dpi=300, bbox_inches="tight")
+    plt.savefig(CONV_DIR / "permeabilite.png", dpi=300, bbox_inches="tight")
 
 
 def enregistrer_donnees(dx_vals, k_vals, erreur, ordre, u_num, domaine, seed):
