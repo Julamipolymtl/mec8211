@@ -10,7 +10,7 @@ Parallélisation :
 Dépendances :
     pip install numpy pillow matplotlib numba
 """
-import os
+
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -313,15 +313,7 @@ def LBM(filename, NX, deltaP, dx, d_equivalent):
     ax.set_aspect('equal')
     ax.set_title(f"Champ de vitesse après {t_} pas de temps")
     plt.tight_layout()
-
-    #ajout par emile
-    os.makedirs("figures", exist_ok=True)
-
-    nom_fig = f"figures/vitesse_NX{NX}_dx{dx:.1e}.png"
-
-    fig.savefig(nom_fig, dpi=300, bbox_inches="tight")
-    print(f"✔ Figure sauvegardée : {nom_fig}")
-
+    plt.show()
 
     return k
 
