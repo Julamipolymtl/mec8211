@@ -60,13 +60,11 @@ def analyser_resultats(dx_vals, k_vals, raff, domaine, seed):
 
     print("\nErreurs relatives :", erreur)
 
-    # Ordre par fit log-log sur les 2 derniers points valides uniquement
+    # Ordre par fit log-log sur tous les points valides (moyenne globale)
     mask = (erreur > 0) & np.isfinite(erreur)
     ordre = None
-    valid_indices = np.where(mask)[0]
-    if len(valid_indices) >= 2:
-        last2 = valid_indices[-2:]
-        p = np.polyfit(np.log(dx_vals[last2]), np.log(erreur[last2]), 1)
+    if mask.sum() >= 2:
+        p = np.polyfit(np.log(dx_vals[mask]), np.log(erreur[mask]), 1)
         ordre = p[0]
         print(f"\nOrdre de convergence estimé : {ordre:.4f}")
     else:
@@ -89,7 +87,8 @@ def analyser_resultats(dx_vals, k_vals, raff, domaine, seed):
 def tracer_resultats(dx_vals, k_vals, erreur, ordre):
     """Trace les courbes de convergence."""
     plt.figure()
-    plt.loglog(dx_vals[:-1], erreur[:-1], "o-", label="Erreur relative")
+    err_label = f"Erreur relative  (p = {ordre:.2f})" if ordre is not None else "Erreur relative"
+    plt.loglog(dx_vals[:-1], erreur[:-1], "o-", label=err_label)
     if ordre is not None:
         ref = erreur[0] * (dx_vals / dx_vals[0]) ** 2
         plt.loglog(dx_vals[:-1], ref[:-1], "k--", label="Ordre 2 (ref.)")
@@ -138,5 +137,5 @@ if __name__ == "__main__":
         std_d=2.85,
         dx_base=2e-6,
         nx_base=100,
-        raff=[1, 2, 4, 8, 16],
+        raff=[0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4],
     )
