@@ -1,221 +1,140 @@
-import os
+from pathlib import Path
 
 import numpy as np
-
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 import devoir3_lbm_accelerated as lbm
 
-
-# ============================================================
-# PARAMETRES
-# ============================================================
-
-SEEDS = [101, 351, 651, 1001, 1501]
-DELTA_P = 0.1
-PORO = 0.9
-MEAN_FIBER_D = 12.5
-STD_D = 2.85
-
-DX_BASE = 2e-6
-NX_BASE = 100
-
-# Garder le domaine constant
-DOMAINE = NX_BASE * DX_BASE
-
-# Raffinnement de maillage constant
-RAFF = [0.5, 0.75, 1, 1.5, 2, 4]
-
-# ============================================================
-# FONCTION PRINCIPALE
-# ============================================================
-
-def etude_convergence():
-    """
-    Effectue une étude de convergence robuste avec moyenne
-    sur plusieurs seeds.
-    """
-    os.makedirs("figures", exist_ok=True)
-
-    k_all = []
-
-    for seed in SEEDS:
-
-        print(f"\n===== SEED {seed} =====")
-
-        k_seed = []
-
-        for raffinement in RAFF:
-
-            dx = DX_BASE / raffinement
-            nx = int(DOMAINE / dx)
-
-            nom_fichier = f"fiber_s{seed}_nx{nx}.tiff"
-
-            print(f"nx = {nx}, dx = {dx:.2e}")
-
-            d_eq = lbm.Generate_sample(
-                seed,
-                nom_fichier,
-                MEAN_FIBER_D,
-                STD_D,
-                PORO,
-                nx,
-                dx,
-            )
-
-            k_val = lbm.LBM(
-                nom_fichier,
-                nx,
-                DELTA_P,
-                dx,
-                d_eq,
-            )
-
-            k_seed.append(k_val)
-
-            sauvegarder_figures(f"s{seed}_nx{nx}")
-            plt.close("all")
-
-        k_all.append(k_seed)
-
-    k_all = np.array(k_all)
-
-    analyser_resultats(k_all)
+RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
+CONV_DIR = RESULTS_DIR / "convergence"
 
 
-# ============================================================
-# SAUVEGARDE FIGURES
-# ============================================================
+def etude_convergence(seed, delta_p, poro, mean_fiber_d, std_d, dx_base, nx_base, raff):
+    """Etude de convergence single-seed, geometrie fixee."""
+    (CONV_DIR / "figures").mkdir(parents=True, exist_ok=True)
+
+    domaine = nx_base * dx_base
+
+    dx_vals = []
+    k_vals = []
+
+    for r in raff:
+        dx = dx_base / r
+        nx = int(domaine / dx)
+
+        nom_fichier = f"fiber_s{seed}_nx{nx}.tiff"
+        print(f"\nnx = {nx}, dx = {dx:.2e}")
+
+        d_eq = lbm.Generate_sample(seed, nom_fichier, mean_fiber_d, std_d, poro, nx, dx)
+        k_val = lbm.LBM(nom_fichier, nx, delta_p, dx, d_eq)
+
+        dx_vals.append(dx)
+        k_vals.append(k_val)
+
+        sauvegarder_figures(f"s{seed}_nx{nx}")
+        plt.close("all")
+
+    dx_vals = np.array(dx_vals)
+    k_vals = np.array(k_vals)
+
+    analyser_resultats(dx_vals, k_vals, raff, domaine, seed)
+
 
 def sauvegarder_figures(prefixe):
-    """
-    Sauvegarde toutes les figures ouvertes avec un nom personnalisé.
-    """
+    """Sauvegarde les figures ouvertes."""
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(
-            f"figures/{prefixe}_fig{i}.png",
+            CONV_DIR / f"figures/{prefixe}_fig{i}.png",
             dpi=300,
             bbox_inches="tight",
         )
 
 
-# ============================================================
-# ANALYSE
-# ============================================================
-
-def analyser_resultats(k_all):
-    """
-    Analyse statistique + estimation ordre de convergence.
-    """
-    dx_vals = np.array([DX_BASE / r for r in RAFF])
-
-    k_moy = np.mean(k_all, axis=0)
-
-    k_ref = k_moy[-1]
-    # Enregistrer les données dans un fichier texte
-    enregistrer_donnees(k_all, dx_vals)
-    # ========================================================
-    # ERREUR ROBUSTE (corrigée)
-    # ========================================================
-
-    erreur = np.abs((k_ref - k_moy) / k_ref)
+def analyser_resultats(dx_vals, k_vals, raff, domaine, seed):
+    """Analyse des resultats et estimation de l'ordre de convergence."""
+    k_ref = k_vals[-1]
+    erreur = np.abs((k_ref - k_vals) / k_ref)
 
     print("\nErreurs relatives :", erreur)
 
-    # ========================================================
-    # PLOT AVEC BARRES D'ERREUR
-    # ========================================================
-
-    plt.figure()
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.xlabel("dx")
-    plt.ylabel("Erreur relative")
-    plt.title("Convergence de k")
-    plt.loglog(dx_vals, erreur, "o-", label="erreur")
-    plt.grid(True)
-    plt.savefig("figures/convergence.png", dpi=300)
-    plt.show()
-
-    plt.figure()
-    plt.semilogx(dx_vals, k_moy, "o-", label="k moyen")
-
-    plt.xlabel("dx")
-    plt.ylabel("Perméabilité k [µm²]")
-    plt.title("Perméabilité en fonction de dx")
-    plt.grid(True)
-    plt.legend()
-
-    plt.savefig("figures/permeabilite.png", dpi=300)
-    plt.show()
-
-    # ========================================================
-    # FIT ROBUSTE (sans log(0))
-    # ========================================================
-
+    # Ordre par fit log-log (on exclut le point de reference)
     mask = (erreur > 0) & np.isfinite(erreur)
-
-    dx_fit = dx_vals[mask]
-    err_fit = erreur[mask]
-
-    if len(err_fit) >= 2:
-        p = np.polyfit(
-            np.log(dx_fit),
-            np.log(err_fit),
-            1,
-        )
-
+    ordre = None
+    if mask.sum() >= 2:
+        p = np.polyfit(np.log(dx_vals[mask]), np.log(erreur[mask]), 1)
         ordre = p[0]
-        print("\nOrdre de convergence estimé :", ordre)
-
+        print(f"\nOrdre de convergence estime : {ordre:.4f}")
     else:
         print("\nPas assez de points valides pour estimer l'ordre.")
 
-    # ========================================================
-    # BIAIS (INTERVALLE UNILATÉRAL)
-    # ========================================================
+    # u_num par extrapolation de Richardson (r=2 entre maillages consecutifs)
+    r = raff[-1] / raff[-2]
+    u_num = None
+    if ordre is not None and ordre > 0:
+        u_num = abs(k_vals[-1] - k_vals[-2]) / (r**ordre - 1)
+        print(f"u_num (Richardson) : {u_num:.4f} um^2")
+        print(f"u_num / k_ref      : {u_num / k_ref:.4f}")
+    else:
+        print("u_num non calcule (ordre invalide).")
 
-    k_max = np.max(k_all, axis=0)
-    biais = (k_max - k_moy) / k_ref
+    tracer_resultats(dx_vals, k_vals, erreur, ordre)
+    enregistrer_donnees(dx_vals, k_vals, erreur, ordre, u_num, domaine, seed)
 
-    print("\nBiais (borne supérieure) :", biais)
 
-# ========================================================
+def tracer_resultats(dx_vals, k_vals, erreur, ordre):
+    """Trace les courbes de convergence."""
+    plt.figure()
+    plt.loglog(dx_vals[:-1], erreur[:-1], "o-", label="Erreur relative")
+    if ordre is not None:
+        ref = erreur[0] * (dx_vals / dx_vals[0]) ** 2
+        plt.loglog(dx_vals[:-1], ref[:-1], "k--", label="Ordre 2 (ref.)")
+    plt.xlabel("dx [m]")
+    plt.ylabel("Erreur relative sur k")
+    plt.title("Convergence spatiale de k")
+    plt.legend()
+    plt.grid(True, which="both")
+    plt.savefig(CONV_DIR / "figures/convergence.png", dpi=300, bbox_inches="tight")
 
-def enregistrer_donnees(k_all, dx_vals, nom_fichier="resultats_convergence.txt"):
-    """
-    Enregistre les données de perméabilité et d'erreur dans un fichier texte.
+    plt.figure()
+    plt.semilogx(dx_vals, k_vals, "o-")
+    plt.xlabel("dx [m]")
+    plt.ylabel("Permeabilite k [µm²]")
+    plt.title("Permeabilite en fonction de dx")
+    plt.grid(True)
+    plt.savefig(CONV_DIR / "figures/permeabilite.png", dpi=300, bbox_inches="tight")
 
-    Paramètres
-    ----------
-    k_all : ndarray
-        Tableau (seeds x raffinement) des perméabilités
-    dx_vals : ndarray
-        Tableau des tailles de mailles correspondantes
-    nom_fichier : str
-        Nom du fichier texte de sortie
-    """
 
-    k_moy = np.mean(k_all, axis=0)
-    k_ref = k_moy[-1]
-    erreur = np.abs((k_ref - k_moy) / k_ref)
-    k_max = np.max(k_all, axis=0)
-    biais = (k_max - k_moy) / k_ref
+def enregistrer_donnees(dx_vals, k_vals, erreur, ordre, u_num, domaine, seed):
+    """Sauvegarde les resultats dans un fichier texte."""
+    nom_fichier = CONV_DIR / "resultats_convergence.txt"
+    k_ref = k_vals[-1]
 
     with open(nom_fichier, "w") as f:
-        f.write("# Nx\t dx [m]\t k_moy [µm2]\t  "
-                "erreur_rel\t biais\n")
+        f.write(f"# Seed : {seed}\n")
+        f.write("# Nx\t dx [m]\t\t k [um^2]\t erreur_rel\n")
         for i, dx in enumerate(dx_vals):
-            nx = int(dx_vals[-1] * len(dx_vals) / dx)  # estimation Nx
-            f.write(f"{nx}\t {dx:.3e}\t {k_moy[i]:.6f}\t "
-                    f"{erreur[i]:.6f}\t {biais[i]:.6f}\n")
+            nx = int(domaine / dx)
+            f.write(f"{nx}\t {dx:.3e}\t {k_vals[i]:.6f}\t {erreur[i]:.6f}\n")
+        if ordre is not None:
+            f.write(f"\n# Ordre de convergence estime : {ordre:.4f}\n")
+        if u_num is not None:
+            f.write(f"# u_num (Richardson)          : {u_num:.6f} um^2\n")
+            f.write(f"# u_num / k_ref               : {u_num / k_ref:.6f}\n")
 
-    print(f"✔ Données sauvegardées dans {nom_fichier}")
-# ============================================================
-# MAIN
-# ============================================================
+    print(f"\nDonnees sauvegardees dans {nom_fichier}")
+
 
 if __name__ == "__main__":
-    etude_convergence()
+    etude_convergence(
+        seed=101,
+        delta_p=0.1,
+        poro=0.9,
+        mean_fiber_d=12.5,
+        std_d=2.85,
+        dx_base=2e-6,
+        nx_base=100,
+        raff=[1, 2, 4],
+    )
