@@ -24,7 +24,7 @@ L_span       = 0.160    # loading span — distance between supports [m]
 E            = 10e6     # Young's modulus [Pa]
 d            = 0.010    # rod diameter [m]
 mass         = 0.050    # rod mass [kg]  (self-weight over the modeled span)
-delta        = 5e-3     # imposed midspan displacement [m]
+delta        = -5e-3    # imposed midspan displacement [m]  (downward, -y)
 
 # ---------------------------------------------------------------------------
 # Input checks
@@ -37,7 +37,7 @@ if n % 2 != 0:
 # ---------------------------------------------------------------------------
 I  = np.pi * d**4 / 64          # second moment of area [m^4]
 g  = 9.81                        # gravitational acceleration [m/s^2]
-w  = mass * g / L_span           # self-weight per unit length over span [N/m]
+w  = -mass * g / L_span          # self-weight per unit length over span [N/m]  (gravity = -y)
 
 mid_node = n // 2                # node index at midspan
 

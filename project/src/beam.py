@@ -269,6 +269,66 @@ def apply_prescribed_displacement(
             f[di] += penalty * rotation * dN[i]
 
 
+def compute_internal_forces(
+    u: np.ndarray,
+    E: float,
+    I: float,
+    L: float,
+    n: int,
+    n_pts: int = 10,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Evaluate bending moment M(x) and shear force V(x) along the beam.
+
+    Uses the Hermite shape-function derivatives element-by-element:
+      M(x) = EI * d²v/dx²  = (EI/Le²) * d²N/dxi² @ u_e
+      V(x) = EI * d³v/dx³  = (EI/Le³) * d³N/dxi³ @ u_e
+
+    The third derivatives are constant per element (piecewise-constant shear).
+
+    Parameters
+    ----------
+    u     : (2*(n+1),) global displacement vector from solve()
+    E     : Young's modulus [Pa]
+    I     : second moment of area [m^4]
+    L     : total beam length [m]
+    n     : number of elements
+    n_pts : evaluation points per element (default 10)
+
+    Returns
+    -------
+    x : (n*n_pts,) positions [m]
+    M : (n*n_pts,) bending moment [N·m]  (positive = sagging)
+    V : (n*n_pts,) shear force [N]
+    """
+    Le = L / n
+    EI = E * I
+    x_list, M_list, V_list = [], [], []
+
+    for e in range(n):
+        x_e = e * Le
+        ue  = u[[2*e, 2*e + 1, 2*e + 2, 2*e + 3]]
+        # Constant shear (third derivative of cubic Hermite w.r.t. xi)
+        d3N = np.array([12.0, 6.0*Le, -12.0, 6.0*Le])
+        V_e = (EI / Le**3) * (d3N @ ue)
+
+        # Avoid duplicate interior nodes: endpoint=False except last element
+        xi_pts = np.linspace(0.0, 1.0, n_pts, endpoint=(e == n - 1))
+        for xi in xi_pts:
+            d2N = np.array([
+                -6.0 + 12.0*xi,
+                Le * (-4.0 + 6.0*xi),
+                6.0 - 12.0*xi,
+                Le * (-2.0 + 6.0*xi),
+            ])
+            M_xi = (EI / Le**2) * (d2N @ ue)
+            x_list.append(x_e + xi * Le)
+            M_list.append(M_xi)
+            V_list.append(V_e)
+
+    return np.array(x_list), np.array(M_list), np.array(V_list)
+
+
 def apply_point_load(
     f: np.ndarray,
     x: float,
