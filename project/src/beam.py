@@ -140,11 +140,12 @@ def solve(
     p_vals = np.array(prescribed_values, dtype=float)
     f_dofs = np.setdiff1d(all_dofs, p_dofs)
 
+    # Partition K and f_ext according to free/prescribed DOFs
     K_ff = K[np.ix_(f_dofs, f_dofs)]
     K_fp = K[np.ix_(f_dofs, p_dofs)]
 
-    rhs = f_ext[f_dofs] - K_fp @ p_vals
-    u_f = np.linalg.solve(K_ff, rhs)
+    rhs_f = f_ext[f_dofs] - K_fp @ p_vals
+    u_f = np.linalg.solve(K_ff, rhs_f)
 
     u = np.zeros(n_dof)
     u[f_dofs] = u_f
@@ -156,3 +157,166 @@ def solve(
     R = K @ u - f_ext
 
     return u, R
+
+
+def assemble_general_load(n: int, L: float, w_func, n_gauss: int = 5) -> np.ndarray:
+    """
+    Assemble the global load vector for an arbitrary distributed load w(x).
+
+    Uses Gauss-Legendre quadrature on each element to integrate the load
+    against the Hermite shape functions. Reduces exactly to
+    assemble_distributed_load for a constant w_func.
+
+    Parameters
+    ----------
+    n       : number of elements
+    L       : total beam length [m]
+    w_func  : callable w(x) returning load intensity [N/m] at position x [m]
+    n_gauss : number of Gauss-Legendre quadrature points per element (default 5)
+
+    Returns
+    -------
+    f : (2*(n+1),) ndarray
+    """
+    Le = L / n
+    n_dof = 2 * (n + 1)
+    f = np.zeros(n_dof)
+    pts, wts = np.polynomial.legendre.leggauss(n_gauss)   # on [-1, 1]
+    for e in range(n):
+        x_e = e * Le
+        fe = np.zeros(4)
+        for pt, wt in zip(pts, wts):
+            xi = (pt + 1) / 2           # map Gauss point to [0, 1]
+            x = x_e + xi * Le           # physical coordinate
+            N = np.array([
+                1 - 3*xi**2 + 2*xi**3,
+                Le * xi * (1 - xi)**2,
+                3*xi**2 - 2*xi**3,
+                Le * xi**2 * (xi - 1),
+            ])
+            fe += wt * w_func(x) * N * (Le / 2)
+        dofs = [2*e, 2*e + 1, 2*e + 2, 2*e + 3]
+        for i, di in enumerate(dofs):
+            f[di] += fe[i]
+    return f
+
+
+def apply_prescribed_displacement(
+    K: np.ndarray,
+    f: np.ndarray,
+    x: float,
+    L: float,
+    n: int,
+    disp: float = None,
+    rotation: float = None,
+    penalty: float = 1e14,
+) -> None:
+    """
+    Weakly enforce a prescribed displacement and/or rotation at position x (in-place).
+
+    Uses the penalty method: a large spring stiffness is added at x to penalize
+    deviations from the target value. Modifies K and f in-place; call solve()
+    afterwards without listing x in prescribed_dofs.
+
+    For constraints that fall exactly on a node, the direct DOF prescription
+    in solve() is exact and preferred. Use this function for off-node positions
+    or when a soft constraint at an arbitrary location is needed.
+
+    Parameters
+    ----------
+    K        : (2*(n+1), 2*(n+1)) global stiffness matrix  (modified in-place)
+    f        : (2*(n+1),) global load vector                (modified in-place)
+    x        : position along the beam [m],  0 <= x <= L
+    L        : total beam length [m]
+    n        : number of elements
+    disp     : prescribed transverse displacement [m],  or None to skip
+    rotation : prescribed rotation [rad],               or None to skip
+    penalty  : penalty stiffness (default 1e14)
+    """
+    if not (0.0 <= x <= L):
+        raise ValueError(f"x={x} is outside the beam [0, {L}]")
+
+    Le = L / n
+    e  = min(int(x / Le), n - 1)
+    xi = (x - e * Le) / Le
+
+    # Hermite shape functions for displacement
+    N1 =  1 - 3*xi**2 + 2*xi**3
+    N2 =  Le * xi * (1 - xi)**2
+    N3 =  3*xi**2 - 2*xi**3
+    N4 =  Le * xi**2 * (xi - 1)
+    N  = np.array([N1, N2, N3, N4])
+
+    # Shape function derivatives for rotation
+    dN1 = (-6*xi + 6*xi**2) / Le
+    dN2 =  1 - 4*xi + 3*xi**2
+    dN3 = ( 6*xi - 6*xi**2) / Le
+    dN4 = -2*xi + 3*xi**2
+    dN  = np.array([dN1, dN2, dN3, dN4])
+
+    dofs = [2*e, 2*e + 1, 2*e + 2, 2*e + 3]
+
+    if disp is not None:
+        for i, di in enumerate(dofs):
+            for j, dj in enumerate(dofs):
+                K[di, dj] += penalty * N[i] * N[j]
+            f[di] += penalty * disp * N[i]
+
+    if rotation is not None:
+        for i, di in enumerate(dofs):
+            for j, dj in enumerate(dofs):
+                K[di, dj] += penalty * dN[i] * dN[j]
+            f[di] += penalty * rotation * dN[i]
+
+
+def apply_point_load(
+    f: np.ndarray,
+    x: float,
+    L: float,
+    n: int,
+    force: float = 0.0,
+    moment: float = 0.0,
+) -> None:
+    """
+    Add a point force and/or moment at position x along the beam (in-place).
+
+    Uses Hermite shape functions to distribute the load to the two nodes of
+    the element containing x, so the result is exact for any x in [0, L].
+
+    Parameters
+    ----------
+    f      : (2*(n+1),) global load vector  (modified in-place)
+    x      : position along the beam [m],  0 <= x <= L
+    L      : total beam length [m]
+    n      : number of elements
+    force  : transverse point force [N]   (positive = +v direction)
+    moment : point moment [N·m]           (positive = +theta direction)
+    """
+    if not (0.0 <= x <= L):
+        raise ValueError(f"x={x} is outside the beam [0, {L}]")
+
+    Le = L / n
+    e = min(int(x / Le), n - 1)     # element index; clamp so x=L lands on last element
+    xi = (x - e * Le) / Le          # local coordinate in [0, 1]
+
+    # Hermite shape functions N(xi): map [v1, th1, v2, th2] -> v(x)
+    N1 =  1 - 3*xi**2 + 2*xi**3
+    N2 =  Le * xi * (1 - xi)**2
+    N3 =  3*xi**2 - 2*xi**3
+    N4 =  Le * xi**2 * (xi - 1)
+
+    # Shape function x-derivatives dN/dx: map [v1, th1, v2, th2] -> theta(x)
+    dN1 = (-6*xi + 6*xi**2) / Le
+    dN2 =  1 - 4*xi + 3*xi**2
+    dN3 = ( 6*xi - 6*xi**2) / Le
+    dN4 = -2*xi + 3*xi**2
+
+    dofs = [2*e, 2*e + 1, 2*e + 2, 2*e + 3]
+    contributions = [
+        force * N1  + moment * dN1,
+        force * N2  + moment * dN2,
+        force * N3  + moment * dN3,
+        force * N4  + moment * dN4,
+    ]
+    for dof, val in zip(dofs, contributions):
+        f[dof] += val
