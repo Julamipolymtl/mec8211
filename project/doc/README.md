@@ -104,10 +104,12 @@ The GCI follows Roache (1994) with safety factor $F_s = 1.25$:
 
 $$\text{GCI}_\text{fine} = F_s \frac{|e_\text{fine} - e_\text{medium}|}{e_\text{fine}(r^{\hat{p}} - 1)}$$
 
-**Outputs** — `results/convergence_cant.png`, `convergence_ss.png`,
-`convergence_mms.png`, `convergence_3pt.png`, `mms_solution.png`, `mms_source.png`,
-`1d_gci.csv`, `1d_u_input.csv`, `mc_distributions_L40.png`, `mc_distributions_L60.png`,
-`beam_fields_cantilever.png`, `beam_fields_3pt.png`
+**Outputs** — `results/convergence_cant.png`, `results/convergence_ss.png`,
+`results/convergence_mms.png`, `results/convergence_3pt.png`,
+`results/mms_solution.png`, `results/mms_source.png`,
+`results/1d_gci.csv`, `results/1d_u_input.csv`,
+`results/mc_distributions_L40.png`, `results/mc_distributions_L60.png`,
+`results/beam_fields_cantilever.png`, `results/beam_fields_3pt.png`
 
 ---
 
@@ -184,9 +186,15 @@ The validation error and combined uncertainty are (ASME V&V 20 eq. 1.5):
 $$\mathcal{E} = \bar{F}_\text{exp} - F_\text{sim}, \qquad
 U_\text{val} = \sqrt{u_\text{num}^2 + U_\text{input}^2 + U_D^2}$$
 
-where $U_\text{input}$ is the 95 % MC half-width,
-$U_D = t_{0.975,5}\,s/\sqrt{6}$ is the 95 % CI on the experimental mean,
-and $u_\text{num} \approx 0$ (Hermite exactness for a cubic-polynomial SRQ).
+where $U_D = t_{0.975,5}\,s/\sqrt{6}$ is the 95 % CI on the experimental mean
+and $u_\text{num} \approx 0$ for the 1D model (Hermite exactness for a
+cubic-polynomial SRQ).  A condition is **validated** when $|\mathcal{E}| < U_\text{val}$.
+
+For the **1D model**, $U_\text{input}$ is the 95 % half-width of the MC output
+distribution (50 000 samples, inputs from the table above).
+For the **ANSYS 2D model**, $U_\text{input} = |{\partial F}/{\partial E}|\,\sigma_E$
+computed from the linear $E$-sweep in Step 2, and $u_\text{num}$ is the GCI
+from mesh convergence.
 
 **Outputs** — `results/validation_ansys.png`, `results/validation_1d.png`,
 `results/validation_error_budget.png`, `results/validation_error_budget_ansys.png`,
