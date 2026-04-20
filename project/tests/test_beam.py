@@ -10,6 +10,8 @@ Hierarchy follows MEC8211 - Verification de code (Trepanier & Vidal, Hiver 2026)
   5. Analytical accuracy: 3-pt bending exactness (cubic solution)
   6. Analytical accuracy: SS beam + UDL
   7. MMS accuracy: sine wave manufactured solution
+  8. Internal forces: compute_internal_forces
+  9. Mooney-Rivlin solver: solve_mr
 
 Tests 4, 6, 7 check that the FEM solution is within a tolerance of the
 analytical/manufactured solution on a fixed mesh. The full convergence order
@@ -29,13 +31,13 @@ from beam import (
     assemble_distributed_load,
     apply_point_load,
     apply_prescribed_displacement,
+    compute_internal_forces,
     solve,
+    solve_mr,
 )
 from cases import ALL_CASES, L as CASES_L
 
-# ---------------------------------------------------------------------------
-# Shared non-dimensional parameters
-# ---------------------------------------------------------------------------
+# --- Shared non-dimensional parameters ---
 E = 1.0
 I = 1.0
 L = 1.0
@@ -43,12 +45,10 @@ w = 1.0
 P = 1.0
 
 # Fixed mesh used for accuracy tests (fine enough to be well below tolerance)
-N_ACCURACY = 16
+N_ACCURACY = 64
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+# --- Helpers ---
 
 def _l2_nodal_error(u, x_nodes, v_exact_func):
     """
@@ -96,9 +96,7 @@ def _3pt_v(x):
         return P / (48*E*I) * (L - x) * (3*L**2 - 4*(L - x)**2)
 
 
-# ===========================================================================
-# 1. SYMMETRY TESTS
-# ===========================================================================
+# --- 1. SYMMETRY TESTS ---
 
 def test_stiffness_symmetry():
     """Global stiffness matrix must satisfy K = K^T at machine precision."""
@@ -121,9 +119,7 @@ def test_displacement_symmetry_ss_udl():
                                err_msg="Displacement not symmetric about midspan")
 
 
-# ===========================================================================
-# 2. CONSERVATION TESTS
-# ===========================================================================
+# --- 2. CONSERVATION TESTS ---
 
 def test_reaction_equilibrium_cantilever_udl():
     """
@@ -159,9 +155,7 @@ def test_reaction_equilibrium_ss_udl():
                                err_msg="Unexpected moment reaction at left pin")
 
 
-# ===========================================================================
-# 3. GALILEAN INVARIANCE - SCALING
-# ===========================================================================
+# --- 3. GALILEAN INVARIANCE - SCALING ---
 
 def test_scaling_invariance_cantilever_udl():
     """
@@ -188,9 +182,7 @@ def test_scaling_invariance_cantilever_udl():
                                err_msg="Rotations not invariant under scaling")
 
 
-# ===========================================================================
-# 4. ANALYTICAL ACCURACY: PARAMETRIZED OVER ALL CASES
-# ===========================================================================
+# --- 4. ANALYTICAL ACCURACY: PARAMETRIZED OVER ALL CASES ---
 
 @pytest.mark.parametrize("case", ALL_CASES, ids=lambda c: c.name)
 def test_accuracy(case):
@@ -207,9 +199,7 @@ def test_accuracy(case):
     )
 
 
-# ===========================================================================
-# 5. ANALYTICAL ACCURACY: 3-PT BENDING EXACTNESS
-# ===========================================================================
+# --- 5. ANALYTICAL ACCURACY: 3-PT BENDING EXACTNESS ---
 
 def test_3pt_bending_midspan_load_exact():
     """
@@ -230,9 +220,7 @@ def test_3pt_bending_midspan_load_exact():
         )
 
 
-# ===========================================================================
-# 6. PRESCRIBED DISPLACEMENT / ROTATION (PENALTY METHOD)
-# ===========================================================================
+# --- 6. PRESCRIBED DISPLACEMENT / ROTATION (PENALTY METHOD) ---
 
 def test_prescribed_displacement_clamped_clamped():
     """
@@ -286,3 +274,124 @@ def test_prescribed_displacement_off_node_enforced():
     )
 
 
+# --- 7. INTERNAL FORCES: compute_internal_forces ---
+
+def test_internal_forces_cantilever_tip_load():
+    """
+    Cantilever + tip load P: exact shear is V = -P everywhere,
+    exact moment is M(x) = P*(L-x)  (linear, positive at root).
+    Checks both V and M at sampled interior points.
+    """
+    n = 8
+    K = assemble_K(n, E, I, L)
+    f = np.zeros(2 * (n + 1))
+    apply_point_load(f, x=L, L=L, n=n, force=P)
+    u, _ = solve(K, f, [0, 1], [0.0, 0.0])
+
+    x_pts, M_pts, V_pts = compute_internal_forces(u, E, I, L, n, n_pts=5)
+
+    np.testing.assert_allclose(V_pts, -P, atol=1e-10,
+                               err_msg="Shear force should equal -P everywhere")
+    M_exact = P * (L - x_pts)
+    np.testing.assert_allclose(M_pts, M_exact, atol=1e-10,
+                               err_msg="Bending moment M(x) != P*(L-x)")
+
+
+def test_internal_forces_ss_udl_boundary_moments():
+    """
+    SS beam + UDL: midspan moment magnitude must match w*L^2/8, and the
+    boundary moments must be small relative to the peak (< 1% -- discretization
+    error from the cubic Hermite approximation of the 4th-degree exact solution).
+
+    Sign note: with w > 0 (upward load) the beam is concave down, so
+    M = EI * d^2v/dx^2 < 0.  The peak moment is at the minimum of M_pts.
+    """
+    n = 20
+    K = assemble_K(n, E, I, L)
+    f = assemble_distributed_load(n, L, w)
+    u, _ = solve(K, f, [0, 2*n], [0.0, 0.0])
+
+    x_pts, M_pts, _ = compute_internal_forces(u, E, I, L, n, n_pts=10)
+
+    M_peak_exact = w * L**2 / 8.0
+    M_peak_fem   = abs(np.min(M_pts))
+    assert abs(M_peak_fem - M_peak_exact) / M_peak_exact < 5e-3, (
+        f"Peak moment: got {M_peak_fem:.6f}, expected {M_peak_exact:.6f}"
+    )
+
+    # boundary moments should be small relative to peak (< 1% discretization error)
+    assert abs(M_pts[0])  / M_peak_exact < 0.01, f"M at x~0 too large: {M_pts[0]:.3e}"
+    assert abs(M_pts[-1]) / M_peak_exact < 0.01, f"M at x~L too large: {M_pts[-1]:.3e}"
+
+
+# --- 8. MOONEY-RIVLIN SOLVER: solve_mr ---
+
+# Mooney-Rivlin constants used across MR tests
+C10_MR = 2.6643e5   # Pa
+C01_MR = 6.6007e5   # Pa
+E0_MR  = 6.0 * (C10_MR + C01_MR)
+D_MR   = 0.005      # rod diameter [m]
+
+
+def test_solve_mr_small_strain_limit():
+    """
+    At very small prescribed displacement the Mooney-Rivlin model must agree
+    with the linear solver to within 1% (linearization is exact at zero strain).
+    """
+    n      = 10
+    L_beam = 0.060
+    delta  = 1e-6        # essentially zero strain
+    mid    = n // 2
+    I_beam = np.pi * D_MR**4 / 64.0
+
+    f = np.zeros(2 * (n + 1))
+    dofs = [0, 2*n, 2*mid]
+    vals = [0.0, 0.0, delta]
+
+    # Linear reference
+    K_lin = assemble_K(n, E0_MR, I_beam, L_beam)
+    _, R_lin = solve(K_lin, f.copy(), dofs, vals)
+    F_lin = R_lin[2*mid]
+
+    # Mooney-Rivlin
+    _, R_mr = solve_mr(n, D_MR, L_beam, C10_MR, C01_MR, f.copy(), dofs, vals)
+    F_mr = R_mr[2*mid]
+
+    assert abs(F_mr - F_lin) / abs(F_lin) < 0.01, (
+        f"MR small-strain limit: F_mr={F_mr:.6e}, F_lin={F_lin:.6e}"
+    )
+
+
+def test_solve_mr_symmetry():
+    """
+    SS beam with midspan prescribed displacement: displacement field v(x)
+    must be symmetric about midspan (same as for the linear solver).
+    """
+    n      = 10
+    L_beam = 0.060
+    delta  = 3e-3
+    mid    = n // 2
+
+    f = np.zeros(2 * (n + 1))
+    u, _ = solve_mr(n, D_MR, L_beam, C10_MR, C01_MR, f,
+                    [0, 2*n, 2*mid], [0.0, 0.0, delta])
+    v = u[0::2]
+    np.testing.assert_allclose(v, v[::-1], atol=1e-8,
+                               err_msg="MR displacement not symmetric about midspan")
+
+
+def test_solve_mr_reaction_sign():
+    """
+    R = f_int - f_ext at prescribed DOFs, so R has the same sign as delta
+    (positive delta -> beam resists with positive R).  Checks that the MR
+    solver returns the physically correct direction of the reaction.
+    """
+    n      = 10
+    L_beam = 0.060
+    delta  = 3e-3    # positive prescribed displacement
+    mid    = n // 2
+
+    f = np.zeros(2 * (n + 1))
+    _, R = solve_mr(n, D_MR, L_beam, C10_MR, C01_MR, f,
+                    [0, 2*n, 2*mid], [0.0, 0.0, delta])
+    assert R[2*mid] > 0, f"Expected positive reaction for positive delta, got {R[2*mid]:.4f}"
