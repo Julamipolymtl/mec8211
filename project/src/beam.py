@@ -131,7 +131,7 @@ def solve(
     -------
     u : (n_dof,) full displacement vector
     R : (n_dof,) reaction vector  R = K @ u - f_ext
-          At free DOFs      : ≈ 0 (equilibrium residual)
+          At free DOFs      : ~= 0 (equilibrium residual)
           At prescribed DOFs: reaction force (load cell reading)
     """
     n_dof = K.shape[0]
@@ -152,7 +152,7 @@ def solve(
     u[p_dofs] = p_vals
 
     # Reaction vector: R = K @ u - f_ext
-    #   At free DOFs    : R ≈ 0  (equilibrium residual, check for correctness)
+    #   At free DOFs    : R ~= 0  (equilibrium residual, check for correctness)
     #   At prescribed DOFs: R = reaction force (what a load cell would read)
     R = K @ u - f_ext
 
@@ -200,6 +200,8 @@ def assemble_general_load(n: int, L: float, w_func, n_gauss: int = 5) -> np.ndar
             f[di] += fe[i]
     return f
 
+
+# --- Not used in the current project (kept for reference) ---
 
 def apply_prescribed_displacement(
     K: np.ndarray,
@@ -281,8 +283,8 @@ def compute_internal_forces(
     Evaluate bending moment M(x) and shear force V(x) along the beam.
 
     Uses the Hermite shape-function derivatives element-by-element:
-      M(x) = EI * d²v/dx²  = (EI/Le²) * d²N/dxi² @ u_e
-      V(x) = EI * d³v/dx³  = (EI/Le³) * d³N/dxi³ @ u_e
+      M(x) = EI * d^2v/dx^2  = (EI/Le^2) * d^2N/dxi^2 @ u_e
+      V(x) = EI * d^3v/dx^3  = (EI/Le^3) * d^3N/dxi^3 @ u_e
 
     The third derivatives are constant per element (piecewise-constant shear).
 
@@ -298,7 +300,7 @@ def compute_internal_forces(
     Returns
     -------
     x : (n*n_pts,) positions [m]
-    M : (n*n_pts,) bending moment [N·m]  (positive = sagging)
+    M : (n*n_pts,) bending moment [N*m]  (positive = sagging)
     V : (n*n_pts,) shear force [N]
     """
     Le = L / n
@@ -350,7 +352,7 @@ def apply_point_load(
     L      : total beam length [m]
     n      : number of elements
     force  : transverse point force [N]   (positive = +v direction)
-    moment : point moment [N·m]           (positive = +theta direction)
+    moment : point moment [N*m]           (positive = +theta direction)
     """
     if not (0.0 <= x <= L):
         raise ValueError(f"x={x} is outside the beam [0, {L}]")
@@ -380,3 +382,161 @@ def apply_point_load(
     ]
     for dof, val in zip(dofs, contributions):
         f[dof] += val
+
+
+def solve_mr(
+    n: int,
+    d: float,
+    L: float,
+    C10: float,
+    C01: float,
+    f_ext: np.ndarray,
+    prescribed_dofs: list,
+    prescribed_values: list,
+    *,
+    n_gauss_elem: int = 3,
+    n_cs: int = 40,
+    max_iter: int = 40,
+    tol: float = 1e-8,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Newton-Raphson solver for a circular-section EB beam with Mooney-Rivlin material.
+
+    The constitutive law is the incompressible two-parameter Mooney-Rivlin model.
+    For a fiber at distance y from the neutral axis with curvature kappa:
+        lambda(y) = 1 - y * kappa
+        sigma(lambda) = 2*C10*(lambda^2 - 1/lambda) + 2*C01*(lambda - 1/lambda^2)
+
+    Section bending moment and tangent flexural stiffness via Gauss integration
+    over the circular cross-section (n_cs points in y):
+        M(kappa)      = -integral sigma(lambda(y)) * y * b(y) dy
+        EI_eff(kappa) =  integral (dsigma/dlambda) * y^2 * b(y) dy
+    where b(y) = 2*sqrt(R^2 - y^2) is the chord width at height y.
+
+    Initialization uses the small-strain linear solution (E0 = 6*(C10+C01)) to
+    provide consistent nodal rotations, avoiding artificially large element
+    curvatures that would cause NR to diverge from a zero starting point.
+
+    Parameters
+    ----------
+    n, d, L          : number of elements, rod diameter [m], beam length [m]
+    C10, C01         : Mooney-Rivlin constants [Pa]
+    f_ext            : (2*(n+1),) external force/moment vector
+    prescribed_dofs  : list of DOF indices with prescribed values
+    prescribed_values: corresponding prescribed displacement/rotation values
+    n_gauss_elem     : Gauss points per element along beam axis (default 3)
+    n_cs             : Gauss points for cross-section integration (default 40)
+    max_iter         : max NR iterations (default 40)
+    tol              : convergence tolerance on free-DOF residual norm (default 1e-8)
+
+    Returns
+    -------
+    u : (2*(n+1),) displacement vector at full load
+    R : (2*(n+1),) reaction vector  (non-zero only at prescribed DOFs)
+    """
+    Le    = L / n
+    n_dof = 2 * (n + 1)
+    p_dofs = np.array(prescribed_dofs, dtype=int)
+    p_vals = np.array(prescribed_values, dtype=float)
+    f_dofs = np.setdiff1d(np.arange(n_dof), p_dofs)
+
+    # Gauss points on [0, 1] for element-axis integration
+    _pts, _wts = np.polynomial.legendre.leggauss(n_gauss_elem)
+    xi_g = (_pts + 1.0) / 2.0
+    wt_g = _wts / 2.0
+
+    # Cross-section Gauss points on [-R, R]
+    _R = 0.5 * d
+    _pts_cs, _wts_cs = np.polynomial.legendre.leggauss(n_cs)
+    y_cs = _R * _pts_cs
+    w_cs = _R * _wts_cs
+    b_cs = 2.0 * np.sqrt(np.maximum(_R**2 - y_cs**2, 0.0))
+
+    def _section(kappa):
+        lam = np.clip(1.0 - y_cs * kappa, 1e-4, None)
+        sig = 2.0*C10*(lam**2 - 1.0/lam) + 2.0*C01*(lam - 1.0/lam**2)
+        Et  = 2.0*C10*(2.0*lam + 1.0/lam**2) + 2.0*C01*(1.0 + 2.0/lam**3)
+        M   = -np.dot(sig * y_cs * b_cs, w_cs)
+        EI  =  np.dot(Et  * y_cs**2 * b_cs, w_cs)
+        return M, EI
+
+    def _assemble(u_cur):
+        K_t   = np.zeros((n_dof, n_dof))
+        f_int = np.zeros(n_dof)
+        for e in range(n):
+            dofs = [2*e, 2*e+1, 2*e+2, 2*e+3]
+            u_e  = u_cur[dofs]
+            for xi, wt in zip(xi_g, wt_g):
+                Bk = np.array([
+                    -6.0 + 12.0*xi,
+                    Le * (-4.0 + 6.0*xi),
+                    6.0 - 12.0*xi,
+                    Le * (-2.0 + 6.0*xi),
+                ])
+                kappa     = (Bk @ u_e) / Le**2
+                M_k, EI_k = _section(kappa)
+                f_int[dofs]              += (wt / Le) * M_k * Bk
+                K_t[np.ix_(dofs, dofs)] += (wt / Le**3) * EI_k * np.outer(Bk, Bk)
+        return K_t, f_int
+
+    # Initialization: linear solution keeps rotations consistent with the
+    # prescribed displacements, avoiding artificially large curvatures at
+    # element boundaries that would cause NR to diverge from u=0.
+    E0 = 6.0 * (C10 + C01)
+    I0 = np.pi * d**4 / 64.0
+    K_lin = assemble_K(n, E0, I0, L)
+    u, _  = solve(K_lin, f_ext, prescribed_dofs, prescribed_values)
+
+    for _ in range(max_iter):
+        K_t, f_int = _assemble(u)
+        r_f = (f_ext - f_int)[f_dofs]
+        if np.linalg.norm(r_f) < tol:
+            break
+        u[f_dofs] += np.linalg.solve(K_t[np.ix_(f_dofs, f_dofs)], r_f)
+
+    _, f_int_final = _assemble(u)
+    R = np.zeros(n_dof)
+    R[p_dofs] = f_int_final[p_dofs] - f_ext[p_dofs]
+    return u, R
+
+
+def l2_nodal_error(u, n, L, v_exact_func):
+    """L2 displacement error evaluated at nodes."""
+    x_nodes = np.linspace(0, L, n + 1)
+    v_h  = u[0::2]
+    v_ex = np.array([v_exact_func(x) for x in x_nodes])
+    return float(np.sqrt(np.mean((v_h - v_ex)**2)))
+
+
+def l2_interior_error(u, n, L, v_exact_func, n_pts=4):
+    """
+    Interior L2 displacement error for a uniform mesh.
+
+    Samples n_pts uniformly spaced points per element, excluding element
+    endpoints, to avoid nodal superconvergence in Hermite elements.
+    """
+    Le = L / n
+    errors_sq = []
+    for e in range(n):
+        x_e = e * Le
+        for k in range(1, n_pts + 1):
+            xi  = k / (n_pts + 1)
+            x   = x_e + xi * Le
+            N1  =  1 - 3*xi**2 + 2*xi**3
+            N2  =  Le * xi * (1 - xi)**2
+            N3  =  3*xi**2 - 2*xi**3
+            N4  =  Le * xi**2 * (xi - 1)
+            v_h = N1*u[2*e] + N2*u[2*e+1] + N3*u[2*e+2] + N4*u[2*e+3]
+            errors_sq.append((v_h - v_exact_func(x))**2)
+    return float(np.sqrt(np.mean(errors_sq)))
+
+
+def F_analytical_3pt(d, L, delta, E):
+    """
+    Analytical midspan reaction force for three-point bending (no self-weight).
+
+    F = 48 E I / L^3 * delta,  I = pi d^4 / 64.
+    Accepts numpy arrays for MC propagation.
+    """
+    I = np.pi * d**4 / 64.0
+    return 48.0 * E * I / L**3 * delta

@@ -40,9 +40,7 @@ class BeamCase:
         return self._setup_fn(n)
 
 
-# ---------------------------------------------------------------------------
-# Case A: cantilever + UDL
-# ---------------------------------------------------------------------------
+# --- Case A: cantilever + UDL ---
 
 def _make_cantilever():
     def v_exact(x):
@@ -61,9 +59,7 @@ def _make_cantilever():
     )
 
 
-# ---------------------------------------------------------------------------
-# Case B: simply supported beam + UDL
-# ---------------------------------------------------------------------------
+# --- Case B: simply supported beam + UDL ---
 
 def _make_ss_udl():
     def v_exact(x):
@@ -82,18 +78,17 @@ def _make_ss_udl():
     )
 
 
-# ---------------------------------------------------------------------------
-# Case C: MMS sine wave
-# ---------------------------------------------------------------------------
+# --- Case C: MMS sine wave ---
 
 def _make_mms_sine():
     EI = E * I
+    k  = 3 * np.pi / L   # 3 half-periods over [0, L]
 
     def w_mms(x):
-        return EI * (np.pi / L)**4 * np.sin(np.pi * x / L)
+        return EI * k**4 * np.sin(k * x)
 
     def v_exact(x):
-        return np.sin(np.pi * x / L)
+        return np.sin(k * x)
 
     def setup(n):
         K = assemble_K(n, E, I, L)
@@ -102,15 +97,13 @@ def _make_mms_sine():
 
     return BeamCase(
         name="mms_sine",
-        description="MMS sine wave  v_mms(x) = sin(pi*x/L), pinned at x=0 and x=L",
+        description="MMS sine wave  v_mms(x) = sin(3*pi*x/L), pinned at x=0 and x=L",
         setup_fn=setup,
         v_exact_fn=v_exact,
     )
 
 
-# ---------------------------------------------------------------------------
-# Public list of all cases
-# ---------------------------------------------------------------------------
+# --- Public list of all cases ---
 
 CANTILEVER_UDL = _make_cantilever()
 SS_UDL        = _make_ss_udl()
