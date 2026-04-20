@@ -1,7 +1,7 @@
 """
 Validation plots: 1D EB FEM vs 2D ANSYS vs experimental.
 
-Generates one figure per span (L=60mm, L=40mm) showing the
+Generates one figure per span (L=65mm, L=60mm, L=40mm) showing the
 force-displacement curve for all three sources.
 
   - Experimental: individual specimen markers + mean +/- 1 std band
@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-from beam import assemble_K, solve
+from beam import assemble_K, solve, solve_mr
 
 DATA    = os.path.join(os.path.dirname(__file__), "..", "data")
 RESULTS = os.path.join(os.path.dirname(__file__), "..", "results")
@@ -37,15 +37,27 @@ MU0  = 2.0 * (C10 + C01)
 E0   = 3.0 * MU0          # linearized E [Pa], nu=0.5
 D_NOM = 5.0e-3             # nominal diameter [m]
 
+# Epistemic bounds on E from TPU literature (Shore A ~70-80, quasi-static)
+E_MIN = 5.0e6   # Pa
+E_MAX = 15.0e6  # Pa
+
 N_ELEM = 20
 
 
-def compute_1d_force(L_span, delta, d=D_NOM):
+def compute_1d_force(L_span, delta, d=D_NOM, E=E0):
     I   = np.pi * d**4 / 64
     mid = N_ELEM // 2
-    K   = assemble_K(N_ELEM, E0, I, L_span)
+    K   = assemble_K(N_ELEM, E, I, L_span)
     f   = np.zeros(2 * (N_ELEM + 1))
     _, R = solve(K, f, [0, 2*N_ELEM, 2*mid], [0.0, 0.0, delta])
+    return R[2*mid]
+
+
+def compute_1d_force_mr(L_span, delta, d=D_NOM):
+    mid = N_ELEM // 2
+    f   = np.zeros(2 * (N_ELEM + 1))
+    _, R = solve_mr(N_ELEM, d, L_span, C10, C01, f,
+                    [0, 2*N_ELEM, 2*mid], [0.0, 0.0, delta])
     return R[2*mid]
 
 
@@ -94,9 +106,20 @@ def make_figure(L_mm, sim, exp):
         d_plot = sorted(sim_L)
     else:
         d_plot = [1.0, 2.0, 3.0, 4.0, 5.0]
-    fem_F = [compute_1d_force(L, dd * 1e-3) for dd in d_plot]
+    fem_F     = [compute_1d_force(L, dd * 1e-3)           for dd in d_plot]
+    fem_F_low = [compute_1d_force(L, dd * 1e-3, E=E_MIN)  for dd in d_plot]
+    fem_F_hi  = [compute_1d_force(L, dd * 1e-3, E=E_MAX)  for dd in d_plot]
+
+    ax.fill_between([0] + d_plot, [0] + fem_F_low, [0] + fem_F_hi,
+                    color="#D55E00", alpha=0.15,
+                    label=f"1D EB: $E$ ∈ [{E_MIN/1e6:.0f}, {E_MAX/1e6:.0f}] MPa")
     ax.plot([0] + d_plot, [0] + fem_F,
-            color="#D55E00", lw=1.8, ls="--", label="1D EB FEM")
+            color="#D55E00", lw=1.8, ls="--", label=f"1D EB FEM ($E_0$ = {E0/1e6:.1f} MPa)")
+
+    # --- 1D EB + Mooney-Rivlin ---
+    mr_F = [compute_1d_force_mr(L, dd * 1e-3) for dd in d_plot]
+    ax.plot([0] + d_plot, [0] + mr_F,
+            color="#CC79A7", lw=1.8, ls="-.", label="1D EB FEM (Mooney-Rivlin)")
 
     # --- Experimental: scatter + mean +/- 1 std band ---
     exp_L = exp.get(L_mm, {})
@@ -145,9 +168,9 @@ if __name__ == "__main__":
     sim = load_simulation()
     exp = load_experimental()
 
-    for L_mm in [60.0, 40.0]:
+    for L_mm in [65.0, 60.0, 40.0]:
         fig  = make_figure(L_mm, sim, exp)
         path = os.path.join(RESULTS, f"plot_validation_L{L_mm:.0f}.png")
-        fig.savefig(path, dpi=150)
+        fig.savefig(path, dpi=300)
         plt.close(fig)
         print(f"Saved {path}")

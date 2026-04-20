@@ -329,6 +329,122 @@ def compute_internal_forces(
     return np.array(x_list), np.array(M_list), np.array(V_list)
 
 
+def solve_mr(
+    n: int,
+    d: float,
+    L: float,
+    C10: float,
+    C01: float,
+    f_ext: np.ndarray,
+    prescribed_dofs: list,
+    prescribed_values: list,
+    *,
+    n_gauss_elem: int = 3,
+    n_cs: int = 40,
+    max_iter: int = 40,
+    tol: float = 1e-8,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Newton-Raphson solver for a circular-section EB beam with Mooney-Rivlin material.
+
+    The constitutive law is the incompressible two-parameter Mooney-Rivlin model.
+    For a fiber at distance y from the neutral axis with curvature kappa:
+        lambda(y) = 1 - y * kappa
+        sigma(lambda) = 2*C10*(lambda^2 - 1/lambda) + 2*C01*(lambda - 1/lambda^2)
+
+    Section bending moment and tangent flexural stiffness via Gauss integration
+    over the circular cross-section (n_cs points in y):
+        M(kappa)      = -integral sigma(lambda(y)) * y * b(y) dy
+        EI_eff(kappa) =  integral (dsigma/dlambda) * y^2 * b(y) dy
+    where b(y) = 2*sqrt(R^2 - y^2) is the chord width at height y.
+
+    Initialization uses the small-strain linear solution (E0 = 6*(C10+C01)) to
+    provide consistent nodal rotations, avoiding artificially large element
+    curvatures that would cause NR to diverge from a zero starting point.
+
+    Parameters
+    ----------
+    n, d, L          : number of elements, rod diameter [m], beam length [m]
+    C10, C01         : Mooney-Rivlin constants [Pa]
+    f_ext            : (2*(n+1),) external force/moment vector
+    prescribed_dofs  : list of DOF indices with prescribed values
+    prescribed_values: corresponding prescribed displacement/rotation values
+    n_gauss_elem     : Gauss points per element along beam axis (default 3)
+    n_cs             : Gauss points for cross-section integration (default 40)
+    max_iter         : max NR iterations (default 40)
+    tol              : convergence tolerance on free-DOF residual norm (default 1e-8)
+
+    Returns
+    -------
+    u : (2*(n+1),) displacement vector at full load
+    R : (2*(n+1),) reaction vector  (non-zero only at prescribed DOFs)
+    """
+    Le    = L / n
+    n_dof = 2 * (n + 1)
+    p_dofs = np.array(prescribed_dofs, dtype=int)
+    p_vals = np.array(prescribed_values, dtype=float)
+    f_dofs = np.setdiff1d(np.arange(n_dof), p_dofs)
+
+    # Gauss points on [0, 1] for element-axis integration
+    _pts, _wts = np.polynomial.legendre.leggauss(n_gauss_elem)
+    xi_g = (_pts + 1.0) / 2.0
+    wt_g = _wts / 2.0
+
+    # Cross-section Gauss points on [-R, R]
+    _R = 0.5 * d
+    _pts_cs, _wts_cs = np.polynomial.legendre.leggauss(n_cs)
+    y_cs = _R * _pts_cs
+    w_cs = _R * _wts_cs
+    b_cs = 2.0 * np.sqrt(np.maximum(_R**2 - y_cs**2, 0.0))
+
+    def _section(kappa):
+        lam = np.clip(1.0 - y_cs * kappa, 1e-4, None)
+        sig = 2.0*C10*(lam**2 - 1.0/lam) + 2.0*C01*(lam - 1.0/lam**2)
+        Et  = 2.0*C10*(2.0*lam + 1.0/lam**2) + 2.0*C01*(1.0 + 2.0/lam**3)
+        M   = -np.dot(sig * y_cs * b_cs, w_cs)
+        EI  =  np.dot(Et  * y_cs**2 * b_cs, w_cs)
+        return M, EI
+
+    def _assemble(u_cur):
+        K_t   = np.zeros((n_dof, n_dof))
+        f_int = np.zeros(n_dof)
+        for e in range(n):
+            dofs = [2*e, 2*e+1, 2*e+2, 2*e+3]
+            u_e  = u_cur[dofs]
+            for xi, wt in zip(xi_g, wt_g):
+                Bk = np.array([
+                    -6.0 + 12.0*xi,
+                    Le * (-4.0 + 6.0*xi),
+                    6.0 - 12.0*xi,
+                    Le * (-2.0 + 6.0*xi),
+                ])
+                kappa     = (Bk @ u_e) / Le**2
+                M_k, EI_k = _section(kappa)
+                f_int[dofs]              += (wt / Le) * M_k * Bk
+                K_t[np.ix_(dofs, dofs)] += (wt / Le**3) * EI_k * np.outer(Bk, Bk)
+        return K_t, f_int
+
+    # Initialization: linear solution keeps rotations consistent with the
+    # prescribed displacements, avoiding artificially large curvatures at
+    # element boundaries that would cause NR to diverge from u=0.
+    E0 = 6.0 * (C10 + C01)
+    I0 = np.pi * d**4 / 64.0
+    K_lin = assemble_K(n, E0, I0, L)
+    u, _  = solve(K_lin, f_ext, prescribed_dofs, prescribed_values)
+
+    for _ in range(max_iter):
+        K_t, f_int = _assemble(u)
+        r_f = (f_ext - f_int)[f_dofs]
+        if np.linalg.norm(r_f) < tol:
+            break
+        u[f_dofs] += np.linalg.solve(K_t[np.ix_(f_dofs, f_dofs)], r_f)
+
+    _, f_int_final = _assemble(u)
+    R = np.zeros(n_dof)
+    R[p_dofs] = f_int_final[p_dofs] - f_ext[p_dofs]
+    return u, R
+
+
 def apply_point_load(
     f: np.ndarray,
     x: float,

@@ -161,6 +161,6 @@ if __name__ == "__main__":
     for filename, case in cases:
         fig  = make_figure(case)
         path = os.path.join(RESULTS, filename)
-        fig.savefig(path, dpi=150)
+        fig.savefig(path, dpi=300)
         plt.close(fig)
         print(f"Saved {path}")

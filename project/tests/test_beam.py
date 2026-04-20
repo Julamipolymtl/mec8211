@@ -30,6 +30,7 @@ from beam import (
     apply_point_load,
     apply_prescribed_displacement,
     solve,
+    solve_mr,
 )
 from cases import ALL_CASES, L as CASES_L
 
@@ -286,3 +287,74 @@ def test_prescribed_displacement_off_node_enforced():
     )
 
 
+# ===========================================================================
+# 7. MOONEY-RIVLIN NONLINEAR SOLVER
+# ===========================================================================
+
+# Physical parameters shared across MR tests
+_C10 = 2.6643e5    # Pa
+_C01 = 6.6007e5    # Pa
+_E0  = 6.0 * (_C10 + _C01)   # linearised modulus [Pa]
+_D   = 5e-3        # rod diameter [m]
+_I   = np.pi * _D**4 / 64
+
+
+def test_solve_mr_small_strain_matches_linear():
+    """
+    At vanishingly small prescribed displacement the MR model must recover the
+    linear result: fibre strains -> 0  =>  sigma_MR -> E0 * eps.
+    Reaction force must agree with the linear solve to within 0.1 %.
+    """
+    n   = 10
+    Lb  = 0.10      # beam length [m]
+    mid = n // 2
+    delta = 1e-9    # ~0 strain: fibre strain << 1e-6
+
+    f = np.zeros(2 * (n + 1))
+    K = assemble_K(n, _E0, _I, Lb)
+    _, R_lin = solve(K, f, [0, 2*n, 2*mid], [0.0, 0.0, delta])
+    _, R_mr  = solve_mr(n, _D, Lb, _C10, _C01, f,
+                        [0, 2*n, 2*mid], [0.0, 0.0, delta])
+
+    np.testing.assert_allclose(
+        R_mr[2*mid], R_lin[2*mid], rtol=1e-3,
+        err_msg="MR reaction does not match linear at near-zero strain",
+    )
+
+
+def test_solve_mr_symmetry():
+    """
+    SS beam with symmetric MR material and symmetric midspan displacement:
+    the nodal displacement field must be symmetric about midspan.
+    """
+    n   = 10
+    Lb  = 0.10
+    mid = n // 2
+    delta = 2e-3    # moderate deflection
+
+    f = np.zeros(2 * (n + 1))
+    u, _ = solve_mr(n, _D, Lb, _C10, _C01, f,
+                    [0, 2*n, 2*mid], [0.0, 0.0, delta])
+    v = u[0::2]
+    np.testing.assert_allclose(
+        v, v[::-1], atol=1e-10,
+        err_msg="MR displacement field not symmetric about midspan",
+    )
+
+
+def test_solve_mr_reaction_equilibrium():
+    """
+    SS beam under UDL: sum of support reactions must equal total applied load,
+    verifying global equilibrium of the MR nonlinear solve.
+    """
+    n    = 10
+    Lb   = 0.10
+    w_load = -50.0   # N/m  (downward)
+
+    f = assemble_distributed_load(n, Lb, w_load)
+    _, R = solve_mr(n, _D, Lb, _C10, _C01, f, [0, 2*n], [0.0, 0.0])
+
+    np.testing.assert_allclose(
+        R[0] + R[2*n], -w_load * Lb, rtol=1e-6,
+        err_msg="MR support reactions do not sum to total applied load",
+    )

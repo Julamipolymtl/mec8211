@@ -40,10 +40,21 @@ os.makedirs(RESULTS, exist_ok=True)
 # ---------------------------------------------------------------------------
 C10 = 2.6643e5          # Pa
 C01 = 6.6007e5          # Pa
-E0  = 6.0 * (C10 + C01) # linearized E [Pa], nu=0.5 (incompressible)
+E0  = 6.0 * (C10 + C01) # nominal linearized E [Pa], nu=0.5 (incompressible)
 
 # ---------------------------------------------------------------------------
-# Uncertainty assumptions for inputs without repeated measurements
+# Epistemic uncertainty: Young's modulus of TPU
+# ---------------------------------------------------------------------------
+# E is treated as an epistemic unknown: we do not know the true value of E
+# for this TPU batch, only that it lies within a plausible range.
+# Literature range for soft TPU (Shore A ~70-80), quasi-static tensile:
+#   ~2-15 MPa  (Covestro datasheets; MDPI Materials 2025; PMC12114912)
+# Represented as Uniform(E_MIN, E_MAX) — maximum entropy for a known interval.
+E_MIN = 5.0e6            # Pa  (lower bound, Shore A ~70 soft TPU)
+E_MAX = 15.0e6           # Pa  (upper bound, Shore A ~80 stiffer TPU)
+
+# ---------------------------------------------------------------------------
+# Aleatory uncertainty assumptions for inputs without repeated measurements
 # ---------------------------------------------------------------------------
 # L_span: machined aluminum fixture, estimated tolerance +/- 0.5 mm (k=2 -> 95%)
 SIGMA_L = 0.25e-3        # 1-sigma [m]
@@ -77,10 +88,10 @@ def load_specimens():
 # Analytical model (verified equivalent to FEM at convergence)
 # ---------------------------------------------------------------------------
 
-def F_analytical(d, L, delta):
+def F_analytical(d, L, delta, E=E0):
     """Midspan reaction force [N]. Accepts numpy arrays."""
     I = np.pi * d**4 / 64.0
-    return 48.0 * E0 * I / L**3 * delta
+    return 48.0 * E * I / L**3 * delta
 
 
 # ---------------------------------------------------------------------------
@@ -89,30 +100,37 @@ def F_analytical(d, L, delta):
 
 def run_mc(d_mean, sigma_d, L_nom, delta_nom, rng):
     """
-    Propagate (d, L, delta) uncertainties through the beam model.
-    Returns (F_mc array of length N_MC).
+    Propagate uncertainties through the beam model.
+      Aleatory : d ~ Normal(d_mean, sigma_d)
+                 L ~ Normal(L_nom, SIGMA_L)
+                 delta ~ Normal(delta_nom, SIGMA_DELTA)
+      Epistemic: E ~ Uniform(E_MIN, E_MAX)  (unknown TPU modulus)
+    Returns F_mc array of length N_MC.
     """
     d_s     = rng.normal(d_mean,    sigma_d,     N_MC)
     L_s     = rng.normal(L_nom,     SIGMA_L,     N_MC)
     delta_s = rng.normal(delta_nom, SIGMA_DELTA, N_MC)
-    return F_analytical(d_s, L_s, delta_s)
+    E_s     = rng.uniform(E_MIN,    E_MAX,       N_MC)
+    return F_analytical(d_s, L_s, delta_s, E_s)
 
 
 def variance_fractions(d_mean, sigma_d, L_nom, delta_nom, rng):
     """
     One-at-a-time variance decomposition.
-    Returns (frac_d, frac_L, frac_delta) as fractions summing to 1.
+    Returns (frac_d, frac_L, frac_delta, frac_E) as fractions summing to 1.
     (Approximate; valid when inputs are independent and effects near-linear.)
     """
     d_s     = rng.normal(d_mean,    sigma_d,     N_MC)
     L_s     = rng.normal(L_nom,     SIGMA_L,     N_MC)
     delta_s = rng.normal(delta_nom, SIGMA_DELTA, N_MC)
+    E_s     = rng.uniform(E_MIN,    E_MAX,       N_MC)
 
-    var_d     = F_analytical(d_s,    L_nom,    delta_nom).var()
-    var_L     = F_analytical(d_mean, L_s,      delta_nom).var()
-    var_delta = F_analytical(d_mean, L_nom,    delta_s).var()
-    total     = var_d + var_L + var_delta + 1e-40
-    return var_d/total, var_L/total, var_delta/total
+    var_d     = F_analytical(d_s,    L_nom,    delta_nom, E0 ).var()
+    var_L     = F_analytical(d_mean, L_s,      delta_nom, E0 ).var()
+    var_delta = F_analytical(d_mean, L_nom,    delta_s,   E0 ).var()
+    var_E     = F_analytical(d_mean, L_nom,    delta_nom, E_s).var()
+    total     = var_d + var_L + var_delta + var_E + 1e-40
+    return var_d/total, var_L/total, var_delta/total, var_E/total
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +147,8 @@ if __name__ == "__main__":
     print(f"  N_MC         = {N_MC:,}  (seed = {RNG_SEED})")
     print(f"  sigma_L      = {SIGMA_L*1e3:.3f} mm  (fixture, assumption)")
     print(f"  sigma_delta  = {SIGMA_DELTA*1e3:.4f} mm  (machine, assumption)")
+    print(f"  E epistemic  = Uniform({E_MIN/1e6:.0f}, {E_MAX/1e6:.0f}) MPa  "
+          f"[literature range for soft TPU Shore A ~70-80]")
     print()
 
     # --- Diameter uncertainty per specimen ---
@@ -155,9 +175,9 @@ if __name__ == "__main__":
             print(f"  delta = {delta_mm:.0f} mm")
             print(f"  {'spec':>4}  {'F_nom (N)':>10}  {'u_input (N)':>12}  "
                   f"{'u_rel (%)':>10}  "
-                  f"{'var_d':>7}  {'var_L':>7}  {'var_dlt':>9}")
+                  f"{'var_d':>7}  {'var_L':>7}  {'var_dlt':>7}  {'var_E':>7}")
             print(f"  {'-'*4}  {'-'*10}  {'-'*12}  {'-'*10}  "
-                  f"{'-'*7}  {'-'*7}  {'-'*9}")
+                  f"{'-'*7}  {'-'*7}  {'-'*7}  {'-'*7}")
 
             u_inputs = []
             for sid in range(1, 7):
@@ -166,12 +186,13 @@ if __name__ == "__main__":
                 F_mc  = run_mc(s["d_mean_m"], s["sigma_d_m"], L, delta, rng)
                 u_inp = F_mc.std(ddof=1)
                 u_rel = u_inp / F_nom * 100.0
-                fd, fL, fdelta = variance_fractions(
+                fd, fL, fdelta, fE = variance_fractions(
                     s["d_mean_m"], s["sigma_d_m"], L, delta, rng)
 
                 print(f"  {sid:>4}  {F_nom:>10.5f}  {u_inp:>12.6f}  "
                       f"{u_rel:>9.3f}%  "
-                      f"{fd*100:>6.1f}%  {fL*100:>6.1f}%  {fdelta*100:>8.1f}%")
+                      f"{fd*100:>6.1f}%  {fL*100:>6.1f}%  "
+                      f"{fdelta*100:>6.1f}%  {fE*100:>6.1f}%")
 
                 u_inputs.append(u_inp)
                 csv_rows.append({
