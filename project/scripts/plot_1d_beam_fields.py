@@ -31,9 +31,7 @@ os.makedirs(RESULTS, exist_ok=True)
 N_PTS = 20   # evaluation points per element for smooth curves
 
 
-# ---------------------------------------------------------------------------
-# Case definitions
-# ---------------------------------------------------------------------------
+# --- Case definitions ---
 
 def setup_cantilever():
     n     = 20
@@ -83,9 +81,7 @@ def setup_three_pt():
     )
 
 
-# ---------------------------------------------------------------------------
-# Plotting
-# ---------------------------------------------------------------------------
+# --- Plotting ---
 
 def make_figure(case: dict) -> plt.Figure:
     n, L, E, I = case["n"], case["L"], case["E"], case["I"]
@@ -113,7 +109,7 @@ def make_figure(case: dict) -> plt.Figure:
     ax.plot(xc_mm, M_cont, color="#D55E00", lw=1.8)
     ax.axhline(0, color="k", lw=0.5, ls="--")
     ax.fill_between(xc_mm, 0, M_cont, alpha=0.15, color="#D55E00")
-    ax.set_ylabel("$M(x)$  (N·m)", fontsize=10)
+    ax.set_ylabel("$M(x)$  (N*m)", fontsize=10)
     ax.grid(True, lw=0.4, alpha=0.4)
 
     # --- Shear force + load-cell reaction ---
@@ -148,9 +144,7 @@ def make_figure(case: dict) -> plt.Figure:
     return fig
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+# --- Main ---
 
 if __name__ == "__main__":
     cases = [

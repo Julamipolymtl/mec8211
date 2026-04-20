@@ -1,0 +1,11 @@
+# Cantilever tip deflection measurements for Young's modulus calibration.
+# L_cant_mm : free (clamped-to-tip) length [mm]
+# tip_mass_g : mass hung at free end [g]
+# v_tip > 0 = downward.  Three repeat measurements per specimen.
+specimen_id,L_cant_mm,tip_mass_g,v1_mm,v2_mm,v3_mm
+1,65.0,5.0,11.1,10.9,11.3
+2,65.0,5.0,11.3,11.1,11.5
+3,65.0,5.0,11.0,11.2,10.8
+4,65.0,5.0,11.8,11.6,11.9
+5,65.0,5.0,11.4,11.2,11.6
+6,65.0,5.0,11.5,11.3,11.7
